@@ -1,9 +1,9 @@
 class Character:
     def __init__(self):
         self.sock = None # Socket connection
-        self.number = None # Order number of the player
+        self.player_id = None # Order player_id of the player
         self.died = False # Is player died
-        self.protected = False # Is player protected by Guard
+        self.protected = False # Is player protected by Savior
         self.good = None # Is player good or bad
         self.name = '' # Player's name
         self.identity = '' # Player's character name
@@ -55,10 +55,10 @@ class Character:
         pass
     
     def num(self):
-        return '%d号%s' % (self.number, self.name)
+        return '%d号%s' % (self.player_id, self.name)
     
     def description(self):
-        return '%d号%s%s' % (self.number, self.identity, self.name)
+        return '%d号%s%s' % (self.player_id, self.identity, self.name)
     
     def openEyes(self):
         playSound('%s请睁眼' % self.identity)
@@ -113,7 +113,7 @@ class Witch(Character):
                     manToKill.canUseGun = False
                     self.usedPoison = True
 
-class Guard(Character):
+class Savior(Character):
     def __init__(self):
         super().__init__()
         self.identity = '守卫'
@@ -125,7 +125,7 @@ class Guard(Character):
             protectedMan = self.selectPlayer('输入要守护的人,0表示空守', minNumber = 0)
             protectedMan = players[protectedMan]
             
-            if protectedMan.number != 0 and protectedMan is self.lastProtected:
+            if protectedMan.player_id != 0 and protectedMan is self.lastProtected:
                 self.message('连续的回合里不能守护同一个人')
                 continue
             break
@@ -135,7 +135,7 @@ class Guard(Character):
         
         self.lastProtected = protectedMan
 
-class Prophet(Character):
+class Seer(Character):
     def __init__(self):
         super().__init__()
         self.identity = '预言家'
@@ -180,7 +180,7 @@ class Hunter(Character):
         print(log('%s枪杀了%s' % (self.description(), player.description())))
         player.die()
 
-class Wolf(Character):
+class Werewolf(Character):
     def __init__(self):
         super().__init__()
         self.identity = '狼人'
@@ -201,7 +201,7 @@ class Wolf(Character):
     def afterExploded(self):
         self.message('你不能带人')
 
-class WolfLeader(Wolf):
+class WerewolfLeader(Werewolf):
     def __init__(self):
         super().__init__()
         self.identity = '狼王'
@@ -220,7 +220,7 @@ class WolfLeader(Wolf):
     def closeEyes(self):
         playSound('狼人请闭眼')
         
-class People(Character):
+class Villager(Character):
     def __init__(self):
         super().__init__()
         self.identity = '村民'

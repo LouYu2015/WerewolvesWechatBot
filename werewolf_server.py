@@ -26,78 +26,85 @@ test = True
 def main():
     global players, identity
 
-    # Initialize player list
-    players = [None]
-
     # List of possible identities
     if test:
-        identity = [Wolf()]#[Villager(), Witch(), Wolf()]
+        identity = [Werewolf()]#[Villager(), Witch(), Werewolf()]
     else:
         identity = [Villager(), Villager(), Villager(),\
-            Witch(), Prophet(), Guard(),\
-            Wolf(), Wolf(), Wolf()]# Identities for each player
+            Witch(), Seer(), Savior(),\
+            Werewolf(), Werewolf(), Werewolf()]# Identities for each player
 
     # Shuffle identities
     random.seed(time.time())
     random.shuffle(identity)
 
-    players += [None]*len(identity)
+    # Initialize player list
+    players = [None]*(len(identity) + 1) # No.0 Player won't be used
 
+    # Start itchat
     itchat.auto_login()
     threading.Thread(target = itchat.run).start()
 
+    # Wait for players to enter the game
     while True:
         print('请按回车键开始游戏')
         input()
-        proceed = True
+
+        can_proceed = True
         for (i, player) in enumerate(players[1:]):
             if player == None:
                 print('缺少%d号玩家' % (i+1))
-                proceed = False 
-        if not proceed:
-            continue
-        break
+                can_proceed = False
 
+        if can_proceed:
+            break
+
+    # Start the game
     playSound('游戏开始')
     mainLoop()
 
-username_to_user = {}
+username_to_user = {} # Map Wechat user name to WechatUser object
 
 class WechatUser:
     def __init__(self, userName):
-        self.queue = queue.Queue()
-        self.newMessage = threading.Event()
+        self.msg_queue = queue.Queue()
         self.userName = userName
 
         username_to_user[userName] = self
 
+    def gotMessage(self, message):
+        self.msg_queue.put(message)
+
     def sendMessage(self, message):
         itchat.send(message, toUserName = self.userName)
 
-    def gotMessage(self, message):
-        self.queue.put(message)
-        self.newMessage.set()
+    def receiveMessage(self):
+        return self.msg_queue.get() # Will block when there's no new message
 
     def getInput(self, message):
         self.sendMessage(message)
-        self.newMessage.wait()
-        self.newMessage.clear()
-        return self.queue.get()
+        return self.receiveMessage()
 
-@itchat.msg_register(itchat.content.TEXT)
+# Accept a new message from players
+@itchat.msg_register(itchat.content.TEXT) # Register as a listener
 def listenText(message):
-    username = message['User']['UserName']
-    text = message['Text']
+    username = message['User']['UserName'] # User name of the Wechat user
+    text = message['Text'] # Content of the message
+
+    # Get remark name
     try:
         remarkname = message['User']['RemarkName']
     except KeyError:
-        remarkname = 'self'
+        remarkname = None
 
+    # If a user wants to enter the game
     if '进入游戏' in text:
         user = WechatUser(username)
-        print(log('%s entered as %s' % (remarkname, username)))
+        print(log('%s 作为 %s 进入了游戏' % (username, remarkname)))
 
         threading.Thread(target = handleRequest, args = (user,remarkname)).start()
+    
+    # If it's other message
     else:
         try:
             username_to_user[username].gotMessage(text)
@@ -105,46 +112,58 @@ def listenText(message):
             print(log('无效的消息:%s %s\n%s' % (remarkname, username, text)))
 
 def handleRequest(user, remarkname):
+    if not remarkname:
+        remarkname = user.getInput('您没有备注名，请输入你的名字')
+        print('%s 更名为 %s' % (user.userName, remarkname))
+
+    # Ask for the player's ID
     while True:
         try:
-            number = int(user.getInput('请输入你的编号：'))
+            player_id = int(user.getInput('请输入你的编号'))
         except ValueError:
             user.sendMessage('这不是数字')
             continue
             
-        if not(number >= 1 and number < len(players)):
+        if not(player_id >= 1 and player_id < len(players)):
             user.sendMessage('超出编号范围')
             continue
+
+        if players[player_id]:
+            user.sendMessage('该编号已被占用')
+            continue
+
         break
         
-    if not players[number]:
-        players[number] = identity.pop()
-        players[number].number = number
-    player = players[number]
+    players[player_id] = identity.pop() # Assign an identity
+    
+    player = players[player_id]
+    player.player_id = player_id
     player.user = user
     player.name = remarkname
+
     player.welcome()
     
-    print(log('%s已经上线' % players[number].num()))
+    print(log('%s已经上线' % players[player_id].num()))
 
 def mainLoop():
-    global players, lastKilled, nRound,\
-        prophet, guard, witch, wolves
+    global players, lastKilled, nRound
+
     nRound = 0
-    prophet, guard, witch, wolves = None, None, None, []
+    seer, savior, witch, werewolves = None, None, None, []
     
     for player in players[1:]:
-        if isinstance(player, Prophet):
-            prophet = player
+        if isinstance(player, Seer):
+            seer = player
         elif isinstance(player, Witch):
             witch = player
-        elif isinstance(player, Guard):
-            guard = player
-        elif isinstance(player, WolfLeader):
-            wolves.insert(0, player)
-        elif isinstance(player, Wolf):
-            wolves.append(player)
+        elif isinstance(player, Savior):
+            savior = player
+        elif isinstance(player, WerewolfLeader):
+            werewolves.insert(0, player) # Insert the leader to the front
+        elif isinstance(player, Werewolf):
+            werewolves.append(player)
     
+    # Main loop
     while True:
         lastKilled = []
         nRound += 1
@@ -156,19 +175,19 @@ def mainLoop():
 
         broadcast(CLR_STRING)
         
-        moveFor(guard)
+        moveFor(savior)
             
-        for wolf in wolves:
-            if not wolf.died:
-                moveFor(wolf)
-                break
+        for werewolf in werewolves:
+            if not werewolf.died:
+                moveFor(werewolf)
+                break # Only one werewolf needs to make a choice
         
         moveFor(witch)
         
         if witch == None:
             isGameEnded()
         
-        moveFor(prophet)
+        moveFor(seer)
         
         broadcast('-----第%d天-----' % nRound)
         print(log('-----第%d天-----' % nRound))
@@ -176,7 +195,7 @@ def mainLoop():
         playSound('天亮了')
         
         agent = players[1]
-        broadcast('%s将记录白天的情况' % agent.num())
+        broadcast('%s 将记录白天的情况' % agent.num())
         
         if nRound == 1:
             agent.inputFrom('警长竞选结束时，请按回车：')
@@ -206,7 +225,7 @@ def mainLoop():
             if explodedMan.died:
                 agent.message('此玩家已经死亡，不能爆炸')
                 continue
-            if not isinstance(explodedMan, Wolf):
+            if not isinstance(explodedMan, Werewolf):
                 broadcast('操作员选择的不是狼！')
                 continue
             else:
@@ -251,35 +270,37 @@ def broadcast(string):
         player.message(string)
 
 def broadcastToWolves(string):
-    for wolf in wolves:
-        wolf.message('狼人广播：' + string)
+    for wolf in werewolves:
+        wolf.message('狼人：' + string)
 
 # Check the end of game
 def isGameEnded():
-    peopleCount = 0
+    villagerCount = 0
     godCount = 0
-    wolfCount = 0
+    werewolfCount = 0
+
     for player in players[1:]:
         if not player.died:
             if isinstance(player, Villager):
-                peopleCount += 1
+                villagerCount += 1
             elif player.good:
                 godCount += 1
             else:
-                wolfCount += 1
+                werewolfCount += 1
     
-    if peopleCount == 0:
+    if villagerCount == 0:
         broadcast('刀民成功，狼人胜利！')
         playSound('刀民成功')
     elif godCount == 0:
         broadcast('刀神成功，狼人胜利！')
         playSound('刀神成功')
-    elif wolfCount == 0:
+    elif werewolfCount == 0:
         broadcast('逐狼成功，平民胜利！')
         playSound('逐狼成功')
     else:
         return
-    endGame()
+
+    print(log('游戏结束'))
     exit()
 
 main()
