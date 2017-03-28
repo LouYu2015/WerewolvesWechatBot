@@ -8,33 +8,36 @@ import threading
 import time
 import random
 import struct
+import queue
+
+import itchat
 
 import audio
 from audio import playSound
-from datatrans import sendData, receiveData
 
-audio.audioPath = '/home/louyu/werewolf/'
+audio.audioPath = '/home/louyu/program/werewolf/'
+
+test = True
 
 def main():
-    global eventNewPlayer, players, identity
-    
-    eventNewPlayer = threading.Event()
-    
-    print('输入服务器端口：', end = '')
-    port = int(input())
+    global players, identity
 
     players = [People()]# Player no.0 is not real
     players[0].number = 0
 
-    identity = [People(), People(), People(),\
-        Witch(), Prophet(), Guard(),\
-        Wolf(), Wolf(), Wolf()]# Identities for each player
+    if test:
+        identity = [Wolf()]#[People(), Witch(), Wolf()]
+    else:
+        identity = [People(), People(), People(),\
+            Witch(), Prophet(), Guard(),\
+            Wolf(), Wolf(), Wolf()]# Identities for each player
     random.seed(time.time())
     random.shuffle(identity)
 
     players += [None]*len(identity)
 
-    threading.Thread(target = listenRequest, args = (port,)).start()
+    itchat.auto_login()
+    threading.Thread(target = itchat.run).start()
 
     while True:
         print('请按回车键开始游戏')
@@ -51,30 +54,59 @@ def main():
     playSound('游戏开始')
     mainLoop()
 
-def listenRequest(port):
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(('0.0.0.0', port))
-        s.listen(5)
-        while True:
-            sock, addr = s.accept()
-            print(log('%s 加入了游戏' % str(addr)))
-            #print sock.recv(1000)
-            threading.Thread(target = handleRequest, args = (sock,)).start()
-    except socket.error as err:
-        print('网络错误！')
-        print(err)
+username_to_user = {}
 
-def handleRequest(sock):
+class WechatUser:
+    def __init__(self, userName):
+        self.queue = queue.Queue()
+        self.newMessage = threading.Event()
+        self.userName = userName
+
+        username_to_user[userName] = self
+
+    def sendMessage(self, message):
+        itchat.send(message, toUserName = self.userName)
+
+    def gotMessage(self, message):
+        self.queue.put(message)
+        self.newMessage.set()
+
+    def getInput(self, message):
+        self.sendMessage(message)
+        self.newMessage.wait()
+        self.newMessage.clear()
+        return self.queue.get()
+
+@itchat.msg_register(itchat.content.TEXT)
+def listenText(message):
+    username = message['User']['UserName']
+    text = message['Text']
+    try:
+        remarkname = message['User']['RemarkName']
+    except KeyError:
+        remarkname = 'self'
+
+    if '进入游戏' in text:
+        user = WechatUser(username)
+        print(log('%s entered as %s' % (remarkname, username)))
+
+        threading.Thread(target = handleRequest, args = (user,)).start()
+    else:
+        try:
+            username_to_user[username].gotMessage(text)
+        except KeyError:
+            print(log('无效的消息:%s %s\n%s' % (remarkname, username, text)))
+
+def handleRequest(user):
     while True:
         try:
-            number = int(sendInput(sock, '请输入你的编号：'))
+            number = int(user.getInput('请输入你的编号：'))
         except ValueError:
-            sendPrint(sock,'这不是数字')
+            user.sendMessage('这不是数字')
             continue
             
         if not(number >= 1 and number < len(players)):
-            sendPrint(sock,'超出编号范围')
+            user.sendMessage('超出编号范围')
             continue
         break
         
@@ -82,12 +114,11 @@ def handleRequest(sock):
         players[number] = identity.pop()
         players[number].number = number
     player = players[number]
-    player.sock = sock
-    player.name = sendInput(sock, '请输入你的名字：')
+    player.user = user
+    player.name = user.getInput('请输入你的名字：')
     player.welcome()
     
     print(log('%s已经上线' % players[number].num()))
-    eventNewPlayer.set()
 
 def mainLoop():
     global players, lastKilled, nRound,\
@@ -201,19 +232,6 @@ def moveFor(char):
     else:
         time.sleep(random.random()*4+4) # Won't let the player close eyes immediately even if he/she died.
 
-# Interact with client
-def sendStop(sock):# Stop client
-    sendData(sock, 'stop')
-
-def sendPrint(sock, string):# Send message to client
-    sendData(sock, 'print')
-    sendData(sock, string)
-
-def sendInput(sock, string):# Receive input from client
-    sendData(sock, 'input')
-    sendData(sock, string)
-    return receiveData(sock)
-
 # Add time to message
 def log(string):
     return '[%s]%s' % (time.strftime('%H:%M:%S'), string)
@@ -255,10 +273,6 @@ def isGameEnded():
     endGame()
     exit()
 
-def endGame():
-    for player in players[1:]:
-        sendStop(player.sock)
-
 # Characters
 class Character:
     def __init__(self):
@@ -273,35 +287,11 @@ class Character:
     def welcome(self):# Tell the player his/her identity
         self.message('你是%s' % self.description())
     
-    def message(self, string): # Send message to player
-        while True:
-            try:
-                sendPrint(self.sock, log(string))
-                return
-            except socket.error:
-                eventNewPlayer.clear()
-                print(log('%s掉线了！' % self.num()))
-                if self.died and self not in laskKilled:
-                    print(log('该玩家已死亡，忽略该玩家'))
-                    return
-                playSound('有人掉线了')
-                eventNewPlayer.wait()
-                continue
-    
-    def inputFrom(self, string):# Get input from player
-        while True:
-            try:
-                return sendInput(self.sock, log(string)).strip()
-            except (socket.error, struct.error):
-                eventNewPlayer.clear()
-                print(log('%s掉线了！' % self.num()))
-                playSound('有人掉线了')
-                eventNewPlayer.wait()
-                continue
-            except UnicodeDecodeError:
-                print(log('%s出现了编码错误！' % self.description()))
-                self.message('编码错误！')
-                continue
+    def message(self, message): # Send message to player
+        self.user.sendMessage(message)
+
+    def inputFrom(self, message):# Get input from player
+        return self.user.getInput(message).strip()
     
     def selectFrom(self, string):# Let the player select yes/no
         while True:
