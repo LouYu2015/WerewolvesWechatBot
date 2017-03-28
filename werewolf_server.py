@@ -12,8 +12,6 @@ import queue
 
 import itchat
 
-from characters import *
-
 import audio
 from audio import playSound
 
@@ -146,7 +144,7 @@ def handleRequest(user, remarkname):
     print(log('%s已经上线' % players[player_id].num()))
 
 def mainLoop():
-    global players, lastKilled, nRound
+    global players, lastKilled, nRound, werewolves
 
     nRound = 0
     seer, savior, witch, werewolves = None, None, None, []
@@ -283,7 +281,7 @@ def isGameEnded():
         if not player.died:
             if isinstance(player, Villager):
                 villagerCount += 1
-            elif player.good:
+            elif player.__class__.good:
                 godCount += 1
             else:
                 werewolfCount += 1
@@ -305,13 +303,11 @@ def isGameEnded():
 
 class Character:
     def __init__(self):
-        self.sock = None # Socket connection
-        self.player_id = None # Order player_id of the player
+        self.player_id = None # ID of the player
         self.died = False # Is player died
         self.protected = False # Is player protected by Savior
-        self.good = None # Is player good or bad
-        self.name = '' # Player's name
-        self.identity = '' # Player's character name
+        self.name = None # Player's name
+        self.user = None # WechatUser object
     
     def welcome(self):# Tell the player his/her identity
         self.message('你是%s' % self.description())
@@ -363,20 +359,21 @@ class Character:
         return '%d号%s' % (self.player_id, self.name)
     
     def description(self):
-        return '%d号%s%s' % (self.player_id, self.identity, self.name)
+        return '%d号%s%s' % (self.player_id, self.__class__.identity, self.name)
     
     def openEyes(self):
-        playSound('%s请睁眼' % self.identity)
+        playSound('%s请睁眼' % self.__class__.identity)
     
     def closeEyes(self):
-        playSound('%s请闭眼' % self.identity)
+        playSound('%s请闭眼' % self.__class__.identity)
         self.message(CLR_STRING)
     
 class Witch(Character):
+    identity = '女巫'
+    good = True
+    
     def __init__(self):
         super().__init__()
-        self.identity = '女巫'
-        self.good = True
         self.usedPoison = False
         self.usedMedicine = False
     
@@ -419,10 +416,11 @@ class Witch(Character):
                     self.usedPoison = True
 
 class Savior(Character):
+    identity = '守卫'
+    good = True
+    
     def __init__(self):
         super().__init__()
-        self.identity = '守卫'
-        self.good = True
         self.lastProtected = players[0]
     
     def move(self):
@@ -441,10 +439,8 @@ class Savior(Character):
         self.lastProtected = protectedMan
 
 class Seer(Character):
-    def __init__(self):
-        super().__init__()
-        self.identity = '预言家'
-        self.good = True
+    identity = '预言家'
+    good = True
     
     def move(self):
         while True:
@@ -454,7 +450,7 @@ class Seer(Character):
                 self.message('你不能验死人')
                 continue
             break
-        if watchedMan.good:
+        if watchedMan.__class__.good:
             self.message('%s是好人' % watchedMan.num())
             print(log('%s发现%s是金水' % (self.description(), watchedMan.description())))
         else:
@@ -462,10 +458,10 @@ class Seer(Character):
             print(log('%s发现%s是查杀' % (self.description(), watchedMan.description())))
             
 class Hunter(Character):
+    self.identity = '猎人'
+    self.good = True
     def __init__(self):
         super().__init__()
-        self.identity = '猎人'
-        self.good = True
         self.canUseGun = True
     
     def afterDying(self):
@@ -486,10 +482,8 @@ class Hunter(Character):
         player.die()
 
 class Werewolf(Character):
-    def __init__(self):
-        super().__init__()
-        self.identity = '狼人'
-        self.good = False
+    identity = '狼人'
+    good = False
     
     def move(self):
         broadcastToWolves('由%s代表狼人进行操作' % self.description())
@@ -507,9 +501,7 @@ class Werewolf(Character):
         self.message('你不能带人')
 
 class WerewolfLeader(Werewolf):
-    def __init__(self):
-        super().__init__()
-        self.identity = '狼王'
+    identity = '狼王'
     
     def afterExploded(self):
         if self.selectFrom('是否要带人'):
@@ -526,9 +518,7 @@ class WerewolfLeader(Werewolf):
         playSound('狼人请闭眼')
         
 class Villager(Character):
-    def __init__(self):
-        super().__init__()
-        self.identity = '村民'
-        self.good = True
+    identity = '村民'
+    good = True
 
 main()
