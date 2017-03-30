@@ -1,4 +1,4 @@
-from audio import playSound
+from audio import play_sound
 from log import log
 
 class Character:
@@ -27,15 +27,15 @@ class Character:
         '''
         Send message to player.
         '''
-        self.user.sendMessage(message)
+        self.user.send_message(message)
 
-    def inputFrom(self, message):
+    def get_input(self, message):
         '''
         Get input from player with message as prompt.
         '''
-        return self.user.getInput(message).strip()
+        return self.user.get_input(message).strip()
     
-    def selectFrom(self, message = ''):
+    def decide(self, message = ''):
         '''
         Ask the player to select yes/no.
         '''
@@ -50,18 +50,18 @@ class Character:
             else:
                 self.message('请输入Y/y(yes)或者N/n(no)')
     
-    def selectPlayer(self, message = '', min_id = 1, candidates = None):
+    def select_player(self, message = '', min_id = 1, candidates = None):
         '''
         Let the player select a player.
         '''
         # Default candidates
         if candidates == None:
             candidates = [player for player in self.controller.players[1:] \
-                if not player.died or player in self.controller.lastKilled]
+                if not player.died or player in self.controller.killed_players]
 
         while True:
             try:
-                answer = int(self.inputFrom(message))
+                answer = int(self.get_input(message))
 
             # Special cases
             except ValueError:
@@ -86,7 +86,7 @@ class Character:
         if not self.protected:
             self.die(True)
         else:
-            self.controller.lastKilled.append(self)
+            self.controller.killed_players.append(self)
     
     def die(self, killed_by_wolf = False):
         '''
@@ -95,12 +95,12 @@ class Character:
         killed_by_wolf: whether killed by a werewolf.
         '''
         self.died = True
-        self.controller.lastKilled.append(self)
+        self.controller.killed_players.append(self)
 
         if not killed_by_wolf: # If killed by wolf, game won't end until Witch makes a choice.
-            self.controller.isGameEnded()
+            self.controller.is_game_ended()
     
-    def afterDying(self):
+    def after_dying(self):
         '''
         Called at the start of daytime if the player died at night.
         '''
@@ -111,7 +111,7 @@ class Character:
 
             # Select next Mayor
             self.controller.broadcast('等待移交警徽')
-            next_mayor_id = self.selectPlayer('输入你要移交警徽的玩家，撕警徽用 0 表示', min_id = 0)
+            next_mayor_id = self.select_player('输入你要移交警徽的玩家，撕警徽用 0 表示', min_id = 0)
             
             # Assign next mayor and broadcast the result
             if next_mayor_id == 0:
@@ -135,17 +135,17 @@ class Character:
         '''
         return '%d号%s%s' % (self.player_id, self.__class__.identity, self.name)
     
-    def openEyes(self):
+    def open_eyes(self):
         '''
         Ask the player to open eyes.
         '''
-        playSound('%s请睁眼' % self.__class__.identity)
+        play_sound('%s请睁眼' % self.__class__.identity)
     
-    def closeEyes(self):
+    def close_eyes(self):
         '''
         Ask the player to close eyes.
         '''
-        playSound('%s请闭眼' % self.__class__.identity)
+        play_sound('%s请闭眼' % self.__class__.identity)
 
         # Clear screen
         self.message()
@@ -156,31 +156,32 @@ class Witch(Character):
     
     def __init__(self, controller):
         super().__init__(controller)
-        self.usedPoison = False
-        self.usedMedicine = False
+        self.used_poison = False
+        self.used_medicine = False
     
     def move(self):
-        used_medicine_this_round = self.useMedicine()
+        used_medicine_this_round = self.use_medicine()
         
-        self.controller.isGameEnded()
+        self.controller.is_game_ended()
         
         if used_medicine_this_round:
             self.message('不能双开')
         else:
-            self.usePoison()
+            self.use_poison()
 
-    def useMedicine(self):
+    def use_medicine(self):
         # Check whether medicine is used
-        if self.usedMedicine:
+        if self.used_medicine:
             self.message('你用过解药了')
-            self.controller.waitRandomTime() # Won't let the player close eyes immediately
+            self.controller.wait_random_time() # Won't let the player close eyes immediately
             return False
 
         # Find the died player
         try:
-            died_player = self.controller.lastKilled[-1]
+            died_player = self.controller.killed_players[-1]
         except IndexError:
             self.message('刚才是空刀')
+            self.controller.wait_random_time()
             return False
 
         # Tell the Witch
@@ -192,7 +193,7 @@ class Witch(Character):
             return False
 
         # Ask whether the Witch want's to use medicine
-        if not self.selectFrom('是否使用解药'):
+        if not self.decide('是否使用解药'):
             print(log('%s 没有使用解药' % self.description()))
             return False
 
@@ -205,23 +206,23 @@ class Witch(Character):
                 print(log('同守同救！'))
                 died_player.died = True
 
-            self.usedMedicine = True
+            self.used_medicine = True
             return True
 
-    def usePoison(self):
+    def use_poison(self):
         # Check whether poison is used
-        if self.usedPoison:
+        if self.used_poison:
             self.message('你用过毒药了')
-            self.controller.waitRandomTime() # Won't let the player close eyes immediately
+            self.controller.wait_random_time() # Won't let the player close eyes immediately
             return False
 
         # Ask whether the Witch want's to use poison
-        if not self.selectFrom('是否使用毒药')
+        if not self.decide('是否使用毒药')
             print(log('%s 没有使用毒药' % self.description()))
             return False
 
         # Ask whoever the Witch wants to kill
-        target_id = self.selectPlayer('输入要毒死的玩家,0表示取消', min_id = 0)
+        target_id = self.select_player('输入要毒死的玩家,0表示取消', min_id = 0)
 
         if target_id != 0:
             target = self.controller.players[target_id]
@@ -230,7 +231,7 @@ class Witch(Character):
             target.can_use_gun = False
 
             print(log('%s 毒死了 %s' % (self.description(), target.description())))
-            self.usedPoison = True
+            self.used_poison = True
             return True
 
 class Savior(Character):
@@ -239,26 +240,27 @@ class Savior(Character):
     
     def __init__(self, controller):
         super().__init__(controller)
-        self.lastProtected = self.controller.players[0] # The player that was protected on last round
+        self.last_protected = self.controller.players[0] # The player that was protected on last round
     
     def move(self):
         # Choose the target
         while True:
-            target_id = self.selectPlayer('输入要守护的人,0表示空守', min_id = 0)
+            target_id = self.select_player('输入要守护的人,0表示空守', min_id = 0)
             target = self.controller.players[target_id]
             
-            if target.player_id != 0 and target is self.lastProtected:
+            if target.player_id != 0 and target is self.last_protected:
                 self.message('连续的回合里不能守护同一个人')
                 continue
             else:
                 break
 
         # Protect the target
-        self.lastProtected.protected = False
+        self.last_protected.protected = False
         target.protected = True
-        self.lastProtected = target
-
         print(log('%s守护了%s' % (self.description(), target.description())))
+        
+        self.last_protected = target
+
 
 class Seer(Character):
     identity = '预言家'
@@ -266,7 +268,7 @@ class Seer(Character):
     
     def move(self):
         # Choose the target
-        target_id = self.selectPlayer('选择你要预言的人')
+        target_id = self.select_player('选择你要预言的人')
         target = self.controller.players[target_id]
 
         # Tell the result
@@ -285,8 +287,8 @@ class Hunter(Character):
         super().__init__(controller)
         self.can_use_gun = True
     
-    def afterDying(self):
-        super().afterDying()
+    def after_dying(self):
+        super().after_dying()
 
         # Can't use gun if killed by Witch
         if not self.can_use_gun:
@@ -294,7 +296,7 @@ class Hunter(Character):
             return
         
         # Choose target
-        target_id = self.selectPlayer('输入你要枪杀的玩家编号，0表示不放枪', min_id = 0)
+        target_id = self.select_player('输入你要枪杀的玩家编号，0表示不放枪', min_id = 0)
         target = self.controller.players[target_id]
         
         if target_id == 0:
@@ -311,14 +313,14 @@ class Werewolf(Character):
     good = False
     
     def move(self):
-        self.controller.broadcastToWolves('由 %s 代表狼人进行操作' % self.description())
+        self.controller.broadcast_to_wolves('由 %s 代表狼人进行操作' % self.description())
 
         # Choose target
-        target_id = self.selectPlayer('输入你要杀的玩家，0表示空刀', min_id = 0)
+        target_id = self.select_player('输入你要杀的玩家，0表示空刀', min_id = 0)
         target = self.controller.players[target_id]
 
         if target_id == 0:
-            self.controller.broadcastToWolves('狼人选择空刀')
+            self.controller.broadcast_to_wolves('狼人选择空刀')
             print(log('狼人空刀'))
             return
 
@@ -326,18 +328,18 @@ class Werewolf(Character):
         target.kill()
 
         # Send result
-        self.controller.broadcastToWolves('狼人选择刀 %s' % target.desc())
+        self.controller.broadcast_to_wolves('狼人选择刀 %s' % target.desc())
         print(log('狼人刀 %s' % target.description()))
     
-    def afterExploded(self):
+    def after_exploded(self):
         self.message('你不能带人')
 
 class WerewolfLeader(Werewolf):
     identity = '狼王'
     
-    def afterExploded(self):
-        if self.selectFrom('是否要带人'):
-            target_id = self.selectPlayer('输入你要带走的人')
+    def after_exploded(self):
+        if self.decide('是否要带人'):
+            target_id = self.select_player('输入你要带走的人')
             target = self.controller.players[target_id]
 
             target.die()
@@ -345,11 +347,11 @@ class WerewolfLeader(Werewolf):
             broadcast('%s 带走了 %s' % (self.description(), target.desc()))
             print(log('%s 带走了 %s' % (self.description(), target.description())))
         
-    def openEyes(self):
-        playSound('狼人请睁眼')
+    def open_eyes(self):
+        play_sound('狼人请睁眼')
     
-    def closeEyes(self):
-        playSound('狼人请闭眼')
+    def close_eyes(self):
+        play_sound('狼人请闭眼')
         self.message('')
         
 class Villager(Character):

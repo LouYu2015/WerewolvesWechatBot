@@ -9,7 +9,7 @@ import random
 import struct
 
 import audio
-from audio import playSound
+from audio import play_sound
 from log import log
 from charactor import *
 import wechat
@@ -26,7 +26,7 @@ class GameController:
     def __init__(self):
         self.have_mayor = False
 
-    def startGame(self):
+    def start_game(self):
         # List of possible identities
         if test:
             self.identity = [Werewolf(self)]#[Villager(), Witch(), Werewolf()]
@@ -58,7 +58,7 @@ class GameController:
                 break
 
         # Start the game
-        playSound('游戏开始')
+        play_sound('游戏开始')
         self.mainLoop()
 
     def mainLoop(self):
@@ -77,7 +77,7 @@ class GameController:
             elif isinstance(player, Werewolf):
                 self.werewolves.append(player)
         
-        self.lastKilled = []
+        self.killed_players = []
         # Main loop
         while True:
             nRound += 1
@@ -87,59 +87,59 @@ class GameController:
             print(log('-----第%d天晚上-----' % nRound))
 
             self.broadcast('天黑请闭眼')
-            playSound('天黑请闭眼')
+            play_sound('天黑请闭眼')
 
             self.broadcast('')
             
-            self.moveFor(savior)
+            self.move_for(savior)
                 
             for werewolf in self.werewolves:
                 if not werewolf.died:
-                    self.moveFor(werewolf)
+                    self.move_for(werewolf)
                     break # Only one werewolf needs to make a choice
             
-            self.moveFor(witch)
+            self.move_for(witch)
             
             if witch == None:
-                self.isGameEnded()
+                self.is_game_ended()
             
-            self.moveFor(seer)
+            self.move_for(seer)
             
             # Day
             self.broadcast('-----第%d天-----' % nRound)
             print(log('-----第%d天-----' % nRound))
 
             self.broadcast('天亮啦')
-            playSound('天亮了')
+            play_sound('天亮了')
             
             # Vote for Mayor
             if nRound == 1:
-                self.voteForMayor()
+                self.vote_for_mayor()
             
             # Show the result of last night
-            self.lastKilled = [player for player in self.lastKilled if player.died]
-            random.shuffle(self.lastKilled)
+            self.killed_players = [player for player in self.killed_players if player.died]
+            random.shuffle(self.killed_players)
 
-            if self.lastKilled:
-                for player in self.lastKilled:
+            if self.killed_players:
+                for player in self.killed_players:
                     self.broadcast('昨天晚上，%s 死了' % player.desc())
             else:
                 self.broadcast('昨天晚上是平安夜～')
 
             # After dying
-            for player in self.lastKilled:
-                player.afterDying()
+            for player in self.killed_players:
+                player.after_dying()
 
-            lastKilled = []
+            killed_players = []
             
             # Vote for suspect
-            self.voteForSuspect()
+            self.vote_for_suspect()
 
-    def voteForMayor(self):
+    def vote_for_mayor(self):
         targets = self.players[1:]
 
         # Ask for candidates
-        candidates = self.broadcastChoice('是否竞选警长', '%s 竞选警长', targets = targets)
+        candidates = self.broadcast_choice('是否竞选警长', '%s 竞选警长', targets = targets)
 
         self.broadcast('%s 竞选警长' % self.player_list_to_str(candidates))
 
@@ -148,11 +148,11 @@ class GameController:
             if player not in candidates]
 
         # Decide speech order
-        self.decideSpeechOrder(candidates)
+        self.decide_speech_order(candidates)
 
         # Ask candidates whether they want to quite
         self.broadcast('正在等待候选人选择是否退水')
-        quited_player = self.broadcastChoice('是否退水', '%s 退水', targets = candidates)
+        quited_player = self.broadcast_choice('是否退水', '%s 退水', targets = candidates)
 
         for player in quited_player:
             candidates.remove(player)
@@ -177,14 +177,14 @@ class GameController:
         self.have_mayor = True
         self.broadcast('%s 当选警长' % mayor.desc())
 
-    def voteForSuspect(self):
-        targets = self.survivedPlayers()
+    def vote_for_suspect(self):
+        targets = self.survived_players()
 
         # Decide speech order
         if self.have_mayor:
             self.broadcast('请警长选择发言顺序')
         else:
-            self.decideSpeechOrder(candidates = targets)
+            self.decide_speech_order(candidates = targets)
 
         # Vote for suspect
         try:
@@ -196,36 +196,36 @@ class GameController:
 
             werewolf.die()
             self.broadcast('%s 爆炸' % werewolf.desc())
-            werewolf.afterDying()
+            werewolf.after_dying()
 
-            werewolf.afterExploded()
+            werewolf.after_exploded()
         
         # Vote out the suspect
         else:
             suspect.die()
-            suspect.afterDying()
+            suspect.after_dying()
             self.broadcast('%s 被投出' % suspect.desc())
 
-        self.isGameEnded()
+        self.is_game_ended()
 
         # Give players some time to view the result
         self.broadcast('查看结果后，回复任意内容以继续游戏', targets = targets)
         for player in targets:
-            player.inputFrom('')
+            player.get_input('')
 
-    def decideSpeechOrder(self, candidates):
+    def decide_speech_order(self, candidates):
         first_player = random.choice(candidates)
         direction = random.choice(['顺时针', '逆时针'])
         self.broadcast('从 %s %s发言' % (first_player.desc(), direction))
 
-    def broadcastChoice(self, message, accept_message, targets = None):
+    def broadcast_choice(self, message, accept_message, targets = None):
         # Broadcast message
         self.broadcast(message + '(y/n)', targets = targets)
 
         # Collect reply
         accepted_players = []
         for player in targets:
-            if player.selectFrom():
+            if player.decide():
                 accepted_players.append(player)
                 print(log(accept_message % player.desc()))
 
@@ -233,8 +233,8 @@ class GameController:
 
     def vote(self, candidates, message, min_id = 1, targets = None):
         while True:
-            vote_result = self.getVoteResult(candidates, message, min_id, targets = targets)
-            self.showVoteResult(vote_result)
+            vote_result = self.get_vote_result(candidates, message, min_id, targets = targets)
+            self.show_vote_result(vote_result)
             
             # Check if two people get equal votes
             if vote_result[0][2] == vote_result[1][2]:
@@ -245,7 +245,7 @@ class GameController:
 
         return vote_result[0][0]
 
-    def getVoteResult(self, candidates, message, min_id = 1, targets = None):
+    def get_vote_result(self, candidates, message, min_id = 1, targets = None):
         self.broadcast(message, targets = targets)
 
         voted_for = [list() for i in range(len(self.players) + 1)]
@@ -254,7 +254,7 @@ class GameController:
         # Ask for vote
         for player in targets:
             while True:
-                voted_id = player.selectPlayer(min_id = min_id, candidates = candidates)
+                voted_id = player.select_player(min_id = min_id, candidates = candidates)
 
                 # Vote for number 0 means explode
                 if voted_id == 0:
@@ -280,7 +280,7 @@ class GameController:
 
         return vote_result
 
-    def showVoteResult(self, vote_results, split = ', '):
+    def show_vote_result(self, vote_results, split = ', '):
         for vote_result in vote_results:
             # Unpack data
             player = vote_result[0]
@@ -293,10 +293,10 @@ class GameController:
             # Broadcast the message
             self.broadcast('%s 获得 %f 票（%s）' % (player.desc(), vote_count, str_voted_by))
 
-    def survivedPlayers(self):
+    def survived_players(self):
         return [player for player in self.players[1:] if not player.died]
 
-    def waitRandomTime(self):
+    def wait_random_time(self):
         time.sleep(random.random()*4+4)
 
     def player_list_to_str(self, players, split = ','):
@@ -313,31 +313,31 @@ class GameController:
         return result
 
     # Check the end of game
-    def isGameEnded(self):
+    def is_game_ended(self):
         # Count players
-        villagerCount = 0
-        godCount = 0
-        werewolfCount = 0
+        villager_count = 0
+        god_count = 0
+        werewolf_count = 0
 
         for player in self.players[1:]:
             if not player.died:
                 if isinstance(player, Villager):
-                    villagerCount += 1
+                    villager_count += 1
                 elif player.__class__.good:
-                    godCount += 1
+                    god_count += 1
                 else:
-                    werewolfCount += 1
+                    werewolf_count += 1
         
         # Check if the game ends
-        if villagerCount == 0:
+        if villager_count == 0:
             self.broadcast('刀民成功，狼人胜利！')
-            playSound('刀民成功')
-        elif godCount == 0:
+            play_sound('刀民成功')
+        elif god_count == 0:
             self.broadcast('刀神成功，狼人胜利！')
-            playSound('刀神成功')
-        elif werewolfCount == 0:
+            play_sound('刀神成功')
+        elif werewolf_count == 0:
             self.broadcast('逐狼成功，平民胜利！')
-            playSound('逐狼成功')
+            play_sound('逐狼成功')
         else:
             return
 
@@ -345,19 +345,19 @@ class GameController:
         print(log('游戏结束'))
         exit()
 
-    def moveFor(self, char):
-        if char == None:
+    def move_for(self, charactor):
+        if charactor == None:
             return
 
-        char.openEyes()
+        charactor.open_eyes()
 
-        if not char.died or char in self.lastKilled:
-            char.move()
+        if not charactor.died or charactor in self.killed_players:
+            charactor.move()
         else:
             # Won't let the player close eyes immediately even if he/she died.
             time.sleep(random.random()*4+4) 
 
-        char.closeEyes()
+        charactor.close_eyes()
 
     def broadcast(self, message, targets = None):
         # Default target
@@ -368,10 +368,10 @@ class GameController:
         for player in targets:
             player.message(message)
 
-    def broadcastToWolves(self, message):
+    def broadcast_to_wolves(self, message):
         self.broadcast('狼人：' + message, targets = self.werewolves)
 
 controller = GameController()
 wechat.game_controller = controller
 
-controller.startGame()
+controller.start_game()

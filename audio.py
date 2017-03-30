@@ -8,7 +8,7 @@ import wave
 
 audioPath = None # Path to audio files
 
-def playSound(name):
+def play_sound(name):
     #define stream chunk   
     chunk = 1024  
 
