@@ -10,7 +10,6 @@ import struct
 
 import audio
 from audio import play_sound
-from log import log
 from charactor import *
 import wechat
 
@@ -25,6 +24,7 @@ class WerewolfExploded(Exception):
 class GameController:
     def __init__(self):
         self.have_mayor = False
+        self.history = []
 
     def start_game(self):
         # List of possible identities
@@ -62,7 +62,7 @@ class GameController:
         self.mainLoop()
 
     def mainLoop(self):
-        nRound = 0
+        self.nRound = 0
         seer, savior, witch, self.werewolves = None, None, None, []
         
         for player in self.players[1:]:
@@ -80,11 +80,10 @@ class GameController:
         self.killed_players = []
         # Main loop
         while True:
-            nRound += 1
+            self.nRound += 1
 
             # Night
-            self.broadcast('-----第%d天晚上-----' % nRound)
-            print(log('-----第%d天晚上-----' % nRound))
+            self.status('-----第%d天晚上-----' % self.nRound, broadcast = True)
 
             self.broadcast('天黑请闭眼')
             play_sound('天黑请闭眼')
@@ -106,14 +105,13 @@ class GameController:
             self.move_for(seer)
             
             # Day
-            self.broadcast('-----第%d天-----' % nRound)
-            print(log('-----第%d天-----' % nRound))
+            self.status('-----第%d天-----' % self.nRound, broadcast = True)
 
             self.broadcast('天亮啦')
             play_sound('天亮了')
             
             # Vote for Mayor
-            if nRound == 1:
+            if self.nRound == 1:
                 self.vote_for_mayor()
             
             # Show the result of last night
@@ -176,6 +174,7 @@ class GameController:
         mayor.is_mayor = True
         self.have_mayor = True
         self.broadcast('%s 当选警长' % mayor.desc())
+        self.status('%s 当选警长' % mayor.description())
 
     def vote_for_suspect(self):
         targets = self.survived_players()
@@ -196,15 +195,17 @@ class GameController:
 
             werewolf.die()
             self.broadcast('%s 爆炸' % werewolf.desc())
+            self.status('%s 爆炸' % werewolf.description())
             werewolf.after_dying()
 
             werewolf.after_exploded()
         
         # Vote out the suspect
         else:
+            self.broadcast('%s 被投出' % suspect.desc())
+            self.status('%s 被投出' % suspect.description())
             suspect.die()
             suspect.after_dying()
-            self.broadcast('%s 被投出' % suspect.desc())
 
         self.is_game_ended()
 
@@ -227,7 +228,7 @@ class GameController:
         for player in targets:
             if player.decide():
                 accepted_players.append(player)
-                print(log(accept_message % player.desc()))
+                self.status(accept_message % player.desc())
 
         return accepted_players
 
@@ -237,10 +238,13 @@ class GameController:
             self.show_vote_result(vote_result)
             
             # Check if two people get equal votes
-            if vote_result[0][2] == vote_result[1][2]:
-                self.broadcast('票数相同，重新投票')
-                continue
-            else:
+            try:
+                if vote_result[0][2] == vote_result[1][2]:
+                    self.broadcast('票数相同，重新投票')
+                    continue
+                else:
+                    break
+            except IndexError:
                 break
 
         return vote_result[0][0]
@@ -300,20 +304,18 @@ class GameController:
         time.sleep(random.random()*4+4)
 
     def player_list_to_str(self, players, split = ','):
-        result = ''
-
         if not players:
             result = '没有人'
-
-        for (i, player) in enumerate(players):
-            if i != 0:
-                result += split
-            result += player.desc()
+        else:
+            result = split.join([player.desc() for player in players])
 
         return result
 
     # Check the end of game
     def is_game_ended(self):
+        if self.nRound == 1:
+            return
+
         # Count players
         villager_count = 0
         god_count = 0
@@ -330,20 +332,25 @@ class GameController:
         
         # Check if the game ends
         if villager_count == 0:
-            self.broadcast('刀民成功，狼人胜利！')
+            self.status('刀民成功，狼人胜利！', broadcast = True)
             play_sound('刀民成功')
         elif god_count == 0:
-            self.broadcast('刀神成功，狼人胜利！')
+            self.status('刀神成功，狼人胜利！', broadcast = True)
             play_sound('刀神成功')
         elif werewolf_count == 0:
-            self.broadcast('逐狼成功，平民胜利！')
+            self.status('逐狼成功，平民胜利！', broadcast = True)
             play_sound('逐狼成功')
         else:
             return
 
         # End of game
-        print(log('游戏结束'))
+        self.status('游戏结束', broadcast = True)
+        self.show_history()
         exit()
+
+    def show_history(self):
+        str_identity = [player.description() for player in self.players[1:]]
+        self.broadcast('\n'.join(str_identity + self.history), targets = self.players[1:])
 
     def move_for(self, charactor):
         if charactor == None:
@@ -370,6 +377,14 @@ class GameController:
 
     def broadcast_to_wolves(self, message):
         self.broadcast('狼人：' + message, targets = self.werewolves)
+
+    def status(self, message, broadcast = False):
+        message_with_time = '[%s]%s' % (time.strftime('%H:%M:%S'), message)
+        self.history.append(message_with_time)
+        print(message_with_time)
+
+        if broadcast:
+            self.broadcast(message)
 
 controller = GameController()
 wechat.game_controller = controller

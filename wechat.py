@@ -3,8 +3,6 @@ import queue
 
 import itchat
 
-from log import log
-
 # Start listening
 itchat.auto_login()
 threading.Thread(target = itchat.run).start()
@@ -66,7 +64,7 @@ def listen_wechat_message(message):
     # If a user wants to enter the game
     if '进入游戏' in text:
         user = WechatUser(username)
-        print(log('%s 作为 %s 进入了游戏' % (username, remarkname)))
+        print('%s 作为 %s 进入了游戏' % (username, remarkname))
 
         threading.Thread(target = handle_request, args = (user,remarkname)).start()
     
@@ -75,7 +73,7 @@ def listen_wechat_message(message):
         try:
             username_to_user[username].got_message(text)
         except KeyError:
-            print(log('无效的消息:%s %s\n%s' % (remarkname, username, text)))
+            print('无效的消息:%s %s\n%s' % (remarkname, username, text))
 
 def handle_request(user, remarkname):
     players = game_controller.players
@@ -114,4 +112,4 @@ def handle_request(user, remarkname):
 
     # Send message
     player.welcome()
-    print(log('%s 已经上线' % player.desc()))
+    print('%s 已经上线' % player.desc())

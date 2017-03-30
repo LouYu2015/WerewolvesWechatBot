@@ -1,5 +1,4 @@
 from audio import play_sound
-from log import log
 
 class Character:
     def __init__(self, controller):
@@ -117,13 +116,13 @@ class Character:
             
             # Assign next mayor and broadcast the result
             if next_mayor_id == 0:
-                self.controller.broadcast('警长 %s 选择撕警徽' % self.desc())
+                self.controller.status('警长 %s 选择撕警徽' % self.desc(), broadcast = True)
             else:
-                next_mayor = self.controller.players[next_mayor]
+                next_mayor = self.controller.players[next_mayor_id]
                 next_mayor.is_mayor = True
                 self.controller.have_mayor = True
 
-                self.controller.broadcast('警长 %s 选择把警徽交给 %s' % (self.desc(), next_mayor.desc()))
+                self.controller.status('警长 %s 选择把警徽交给 %s' % (self.desc(), next_mayor.desc()), broadcast = True)
     
     def desc(self):
         '''
@@ -196,16 +195,16 @@ class Witch(Character):
 
         # Ask whether the Witch want's to use medicine
         if not self.decide('是否使用解药'):
-            print(log('%s 没有使用解药' % self.description()))
+            self.controller.status('%s 没有救 %s' % (self.description(), died_player.description()))
             return False
 
         else:
-            print(log('%s 救了 %s' % (self.description(), died_player.description())))
+            self.controller.status('%s 救了 %s' % (self.description(), died_player.description()))
             died_player.died = False
             
             # If Witch saves the protected player, the player will die
             if died_player.protected:
-                print(log('同守同救！'))
+                self.controller.status('同守同救！')
                 died_player.died = True
 
             self.used_medicine = True
@@ -220,7 +219,7 @@ class Witch(Character):
 
         # Ask whether the Witch want's to use poison
         if not self.decide('是否使用毒药'):
-            print(log('%s 没有使用毒药' % self.description()))
+            self.controller.status('%s 没有使用毒药' % self.description())
             return False
 
         # Ask whoever the Witch wants to kill
@@ -232,7 +231,7 @@ class Witch(Character):
             target.die() # Can't be saved by Savior
             target.can_use_gun = False
 
-            print(log('%s 毒死了 %s' % (self.description(), target.description())))
+            self.controller.status('%s 毒死了 %s' % (self.description(), target.description()))
             self.used_poison = True
             return True
 
@@ -259,7 +258,7 @@ class Savior(Character):
         # Protect the target
         self.last_protected.protected = False
         target.protected = True
-        print(log('%s守护了%s' % (self.description(), target.description())))
+        self.controller.status('%s 守护了 %s' % (self.description(), target.description()))
 
         self.last_protected = target
 
@@ -276,10 +275,10 @@ class Seer(Character):
         # Tell the result
         if target.__class__.good:
             self.message('%s 是好人' % target.desc())
-            print(log('%s 发现 %s 是金水' % (self.description(), target.description())))
+            self.controller.status('%s 发现 %s 是金水' % (self.description(), target.description()))
         else:
             self.message('%s 是坏人' % target.desc())
-            print(log('%s 发现 %s 是查杀' % (self.description(), target.description())))
+            self.controller.status('%s 发现 %s 是查杀' % (self.description(), target.description()))
             
 class Hunter(Character):
     identity = '猎人'
@@ -298,16 +297,16 @@ class Hunter(Character):
             return
         
         # Choose target
-        target_id = self.select_player('输入你要枪杀的玩家编号，0表示不放枪', min_id = 0)
+        target_id = self.select_player('输入你要枪杀的玩家编号，0表示黑枪', min_id = 0)
         target = self.controller.players[target_id]
         
         if target_id == 0:
-            print(log('猎人没有放枪'))
+            self.controller.status('%s 黑枪' % self.description())
             return
         
         # Broadcast the result
-        broadcast('%s 枪杀了 %s' % (self.description(), target.desc()))
-        print(log('%s 枪杀了 %s' % (self.description(), target.description())))
+        self.controller.broadcast('%s 枪杀了 %s' % (self.description(), target.desc()))
+        self.controller.status('%s 枪杀了 %s' % (self.description(), target.description()))
         target.die()
 
 class Werewolf(Character):
@@ -323,7 +322,7 @@ class Werewolf(Character):
 
         if target_id == 0:
             self.controller.broadcast_to_wolves('狼人选择空刀')
-            print(log('狼人空刀'))
+            self.controller.status('狼人空刀')
             return
 
         # Kill
@@ -331,7 +330,7 @@ class Werewolf(Character):
 
         # Send result
         self.controller.broadcast_to_wolves('狼人选择刀 %s' % target.desc())
-        print(log('狼人刀 %s' % target.description()))
+        self.controller.status('狼人选择刀 %s' % target.description())
     
     def after_exploded(self):
         self.message('你不能带人')
@@ -346,8 +345,8 @@ class WerewolfLeader(Werewolf):
 
             target.die()
             
-            broadcast('%s 带走了 %s' % (self.description(), target.desc()))
-            print(log('%s 带走了 %s' % (self.description(), target.description())))
+            self.controller.broadcast('%s 带走了 %s' % (self.description(), target.desc()))
+            self.controller.status('%s 带走了 %s' % (self.description(), target.description()))
         
     def open_eyes(self):
         play_sound('狼人请睁眼')
