@@ -250,8 +250,8 @@ class Savior(Character):
             if target.player_id != 0 and target is self.lastProtected:
                 self.message('连续的回合里不能守护同一个人')
                 continue
-
-            break
+            else:
+                break
 
         # Protect the target
         self.lastProtected.protected = False
@@ -266,23 +266,16 @@ class Seer(Character):
     
     def move(self):
         # Choose the target
-        while True:
-            target_id = self.selectPlayer('选择你要预言的人')
-            target = self.controller.players[target_id]
+        target_id = self.selectPlayer('选择你要预言的人')
+        target = self.controller.players[target_id]
 
-            if target.died and target not in self.controller.lastKilled:
-                self.message('你不能验死人')
-                continue
-
-            break
-
-        # Send the result
+        # Tell the result
         if target.__class__.good:
-            self.message('%s是好人' % target.desc())
-            print(log('%s发现%s是金水' % (self.description(), target.description())))
+            self.message('%s 是好人' % target.desc())
+            print(log('%s 发现 %s 是金水' % (self.description(), target.description())))
         else:
-            self.message('%s是坏人' % target.desc())
-            print(log('%s发现%s是查杀' % (self.description(), target.description())))
+            self.message('%s 是坏人' % target.desc())
+            print(log('%s 发现 %s 是查杀' % (self.description(), target.description())))
             
 class Hunter(Character):
     identity = '猎人'
