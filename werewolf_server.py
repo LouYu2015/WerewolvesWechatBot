@@ -24,7 +24,7 @@ class WerewolfExploded(Exception):
 
 class GameController:
     def __init__(self):
-        self.have_mayer = False
+        self.have_mayor = False
 
     def startGame(self):
         # List of possible identities
@@ -112,7 +112,7 @@ class GameController:
             self.broadcast('天亮啦')
             playSound('天亮了')
             
-            # Vote for Mayer
+            # Vote for Mayor
             if nRound == 1:
                 self.voteForMayor()
             
@@ -165,23 +165,23 @@ class GameController:
             return
 
         if len(candidates) == 1:
-            mayer = candidates[0]
+            mayor = candidates[0]
 
         # Vote
         else:
             self.broadcast('等待玩家投票')
-            mayer = self.vote(candidates, '请输入你要选为警长的玩家编号', targets = can_vote_players)
+            mayor = self.vote(candidates, '请输入你要选为警长的玩家编号', targets = can_vote_players)
         
-        # Assign Mayer
-        mayer.is_mayer = True
-        self.have_mayer = True
-        self.broadcast('%s 当选警长' % mayer.desc())
+        # Assign Mayor
+        mayor.is_mayor = True
+        self.have_mayor = True
+        self.broadcast('%s 当选警长' % mayor.desc())
 
     def voteForSuspect(self):
         targets = self.survivedPlayers()
 
         # Decide speech order
-        if self.have_mayer:
+        if self.have_mayor:
             self.broadcast('请警长选择发言顺序')
         else:
             self.decideSpeechOrder(candidates = targets)

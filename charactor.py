@@ -13,7 +13,7 @@ class Character:
         self.died = False # Is player died
         self.protected = False # Is player protected by Savior
 
-        self.is_mayer = False # Is the player elected as a mayer
+        self.is_mayor = False # Is the player elected as a mayor
 
         self.controller = controller # Game controller
     
@@ -104,24 +104,24 @@ class Character:
         '''
         Called at the start of daytime if the player died at night.
         '''
-        if self.is_mayer:
+        if self.is_mayor:
             # Resign
-            self.is_mayer = False
-            self.controller.have_mayer = False
+            self.is_mayor = False
+            self.controller.have_mayor = False
 
-            # Select next Mayer
+            # Select next Mayor
             self.controller.broadcast('等待移交警徽')
-            next_mayer_id = self.selectPlayer('输入你要移交警徽的玩家，撕警徽用 0 表示', min_id = 0)
+            next_mayor_id = self.selectPlayer('输入你要移交警徽的玩家，撕警徽用 0 表示', min_id = 0)
             
-            # Assign next mayer and broadcast the result
-            if next_mayer_id == 0:
+            # Assign next mayor and broadcast the result
+            if next_mayor_id == 0:
                 self.controller.broadcast('警长 %s 选择撕警徽' % self.desc())
             else:
-                next_mayer = self.controller.players[next_mayer]
-                next_mayer.is_mayer = True
-                self.controller.have_mayer = True
+                next_mayor = self.controller.players[next_mayor]
+                next_mayor.is_mayor = True
+                self.controller.have_mayor = True
 
-                self.controller.broadcast('警长 %s 选择把警徽交给 %s' % (self.desc(), next_mayer.desc()))
+                self.controller.broadcast('警长 %s 选择把警徽交给 %s' % (self.desc(), next_mayor.desc()))
     
     def desc(self):
         '''
