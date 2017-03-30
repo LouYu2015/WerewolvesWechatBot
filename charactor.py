@@ -23,13 +23,13 @@ class Character:
         '''
         self.message('你是 %s' % self.description())
     
-    def message(self, message):
+    def message(self, message = ''):
         '''
         Send message to player.
         '''
         self.user.send_message(message)
 
-    def get_input(self, message):
+    def get_input(self, message = ''):
         '''
         Get input from player with message as prompt.
         '''
@@ -41,6 +41,8 @@ class Character:
         '''
         if message:
             message += '(y/n)'
+
+        answer = self.get_input(message)
 
         while True:
             if answer == 'Y' or answer == 'y':
@@ -217,7 +219,7 @@ class Witch(Character):
             return False
 
         # Ask whether the Witch want's to use poison
-        if not self.decide('是否使用毒药')
+        if not self.decide('是否使用毒药'):
             print(log('%s 没有使用毒药' % self.description()))
             return False
 
@@ -258,7 +260,7 @@ class Savior(Character):
         self.last_protected.protected = False
         target.protected = True
         print(log('%s守护了%s' % (self.description(), target.description())))
-        
+
         self.last_protected = target
 
 

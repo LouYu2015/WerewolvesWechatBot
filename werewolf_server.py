@@ -291,7 +291,7 @@ class GameController:
             str_voted_by = self.player_list_to_str(voted_by)
 
             # Broadcast the message
-            self.broadcast('%s 获得 %f 票（%s）' % (player.desc(), vote_count, str_voted_by))
+            self.broadcast('%s 获得 %.1f 票（%s）' % (player.desc(), vote_count, str_voted_by))
 
     def survived_players(self):
         return [player for player in self.players[1:] if not player.died]
@@ -302,7 +302,7 @@ class GameController:
     def player_list_to_str(self, players, split = ','):
         result = ''
 
-        if players == 0:
+        if not players:
             result = '没有人'
 
         for (i, player) in enumerate(players):

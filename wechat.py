@@ -114,4 +114,4 @@ def handle_request(user, remarkname):
 
     # Send message
     player.welcome()
-    print(log('%s 已经上线' % player.num()))
+    print(log('%s 已经上线' % player.desc()))
