@@ -1,9 +1,6 @@
 from audio import playSound
 from log import log
 
-def wait_for_random_time():
-    time.sleep(random.random()*4+4)
-
 class Character:
     def __init__(self, controller):
         '''
@@ -95,7 +92,7 @@ class Character:
         '''
         Called when the player will be died. Ignore Savior's protection.
 
-        killed_by_wolf: whether killed by a wolf.
+        killed_by_wolf: whether killed by a werewolf.
         '''
         self.died = True
         self.controller.lastKilled.append(self)
@@ -116,14 +113,14 @@ class Character:
             self.controller.broadcast('等待移交警徽')
             next_mayer_id = self.selectPlayer('输入你要移交警徽的玩家，撕警徽用 0 表示', min_id = 0)
             
-            # Broadcast the result
+            # Assign next mayer and broadcast the result
             if next_mayer_id == 0:
                 self.controller.broadcast('警长 %s 选择撕警徽' % self.desc())
             else:
                 next_mayer = self.controller.players[next_mayer]
                 next_mayer.is_mayer = True
                 self.controller.have_mayer = True
-                
+
                 self.controller.broadcast('警长 %s 选择把警徽交给 %s' % (self.desc(), next_mayer.desc()))
     
     def desc(self):
@@ -163,49 +160,78 @@ class Witch(Character):
         self.usedMedicine = False
     
     def move(self):
+        used_medicine_this_round = self.useMedicine()
+        
+        self.controller.isGameEnded()
+        
+        if used_medicine_this_round:
+            self.message('不能双开')
+        else:
+            self.usePoison()
+
+    def useMedicine(self):
+        # Check whether medicine is used
         if self.usedMedicine:
             self.message('你用过解药了')
+            self.controller.waitRandomTime() # Won't let the player close eyes immediately
+            return False
+
+        # Find the died player
+        try:
+            died_player = self.controller.lastKilled[-1]
+        except IndexError:
+            self.message('刚才是空刀')
+            return False
+
+        # Tell the Witch
+        self.message('刚才 %s 被杀了' % died_player.desc())
+
+        # Witch can't save himself/herself after fist round
+        if (self.controller.nRound >= 2 and died_player is self):
+            self.message('第二回合起你不能自救')
+            return False
+
+        # Ask whether the Witch want's to use medicine
+        if not self.selectFrom('是否使用解药'):
+            print(log('%s 没有使用解药' % self.description()))
+            return False
+
         else:
-            try:
-                diedMan = self.controller.lastKilled[-1]
-            except IndexError:
-                self.message('刚才是空刀')
-            else:
-                self.message('刚才%s被杀了' % diedMan.desc())
-
-                if (nRound >= 2 and diedMan is self):
-                    self.message('第二回合起你不能自救')
-
-                elif not self.selectFrom('是否救人'):
-                    print(log('%s没有救人' % self.description()))
-
-                else:
-                    print(log('%s救了%s' % (self.description(), diedMan.description())))
-                    self.usedMedicine = True
-                    diedMan.died = False
-                    
-                    if diedMan.protected:
-                        print(log('同守同救！'))
-                        diedMan.died = True
-
-        self.controller.isGameEnded()
+            print(log('%s 救了 %s' % (self.description(), died_player.description())))
+            died_player.died = False
             
+            # If Witch saves the protected player, the player will die
+            if died_player.protected:
+                print(log('同守同救！'))
+                died_player.died = True
+
+            self.usedMedicine = True
+            return True
+
+    def usePoison(self):
+        # Check whether poison is used
         if self.usedPoison:
             self.message('你用过毒药了')
-            wait_for_random_time() # Won't let the player close eyes immediately
+            self.controller.waitRandomTime() # Won't let the player close eyes immediately
+            return False
 
-        else:
-            if self.selectFrom('是否使用毒药'):
-                target_id = self.selectPlayer('输入要毒死的玩家,0表示取消', min_id = 0)
+        # Ask whether the Witch want's to use poison
+        if not self.selectFrom('是否使用毒药')
+            print(log('%s 没有使用毒药' % self.description()))
+            return False
 
-                if target_id != 0:
-                    target = self.controller.players[target_id]
+        # Ask whoever the Witch wants to kill
+        target_id = self.selectPlayer('输入要毒死的玩家,0表示取消', min_id = 0)
 
-                    target.die() # Can't be saved by Savior
-                    target.can_use_gun = False
-                    self.usedPoison = True
+        if target_id != 0:
+            target = self.controller.players[target_id]
 
-                    print(log('%s毒死了%s' % (self.description(), target.description())))
+            target.die() # Can't be saved by Savior
+            target.can_use_gun = False
+
+            print(log('%s 毒死了 %s' % (self.description(), target.description())))
+            self.usedPoison = True
+            return True
 
 class Savior(Character):
     identity = '守卫'

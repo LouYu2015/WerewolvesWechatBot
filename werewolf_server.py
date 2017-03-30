@@ -22,7 +22,7 @@ class WerewolfExploded(Exception):
     def __init__(self, player):
         self.player = player
 
-class gameController:
+class GameController:
     def __init__(self):
         self.have_mayer = False
 
@@ -298,6 +298,9 @@ class gameController:
     def survivedPlayers(self):
         return [player for player in self.players[1:] if not player.died]
 
+    def waitRandomTime(self):
+        time.sleep(random.random()*4+4)
+
     # Check the end of game
     def isGameEnded(self):
         # Count players
@@ -357,7 +360,7 @@ class gameController:
     def broadcastToWolves(self, message):
         self.broadcast('狼人：' + message, targets = self.werewolves)
 
-controller = gameController()
+controller = GameController()
 wechat.game_controller = controller
 
 controller.startGame()
