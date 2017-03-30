@@ -14,11 +14,13 @@ from log import log
 from charactor import *
 import wechat
 
-CLR_STRING = '\n'*25 + '清屏'
-
 audio.audioPath = '/home/louyu/program/werewolf/audio/'
 
 test = True
+
+class WerewolfExploded(Exception):
+    def __init__(self, player):
+        self.player = player
 
 class gameController:
     def startGame(self):
@@ -35,7 +37,9 @@ class gameController:
         random.shuffle(self.identity)
 
         # Initialize player list
-        self.players = [None]*(len(self.identity) + 1) # No.0 Player won't be used
+        self.players = [Villager(self)] + [None]*len(self.identity) # No.0 Player won't be used
+        self.players[0].died = True # Player 0 is just a placeholder
+        self.players[0].player_id = 0
 
         # Wait for players to enter the game
         while True:
@@ -71,17 +75,18 @@ class gameController:
             elif isinstance(player, Werewolf):
                 self.werewolves.append(player)
         
+        self.lastKilled = []
         # Main loop
         while True:
-            self.lastKilled = []
             nRound += 1
 
+            # Night
             self.broadcast('-----第%d天晚上-----' % (nRound-1))
             print(log('-----第%d天晚上-----' % (nRound-1)))
             self.broadcast('天黑请闭眼')
             playSound('天黑请闭眼')
 
-            self.broadcast(CLR_STRING)
+            self.broadcast('')
             
             self.moveFor(savior)
                 
@@ -97,69 +102,198 @@ class gameController:
             
             self.moveFor(seer)
             
+            # Day
             self.broadcast('-----第%d天-----' % nRound)
             print(log('-----第%d天-----' % nRound))
             self.broadcast('天亮啦')
             playSound('天亮了')
             
-            agent = self.players[1]
-            self.broadcast('%s 将记录白天的情况' % agent.num())
-            
+            # Vote for Mayor
             if nRound == 1:
-                agent.inputFrom('警长竞选结束时，请按回车：')
+                self.voteForMayor()
             
-            anyoneDied = False
+            # Show the result of last night
+            self.lastKilled = [player for player in self.lastKilled if player.died]
             random.shuffle(self.lastKilled)
-            for player in self.lastKilled:
-                if player.died:
+            if self.lastKilled:
+                for player in self.lastKilled:
                     self.broadcast('昨天晚上，%s死了' % player.num())
-                    anyoneDied = True
-            if not anyoneDied:
+            else:
                 self.broadcast('昨天晚上是平安夜～')
 
+            lastKilled = []
+
+            # After dying
             for player in self.lastKilled:
-                if player.died:
-                    player.afterDying()
+                player.afterDying()
             
-            exploded = False
+            # Vote for suspect
+            self.voteForSuspect()
+
+    def voteForMayor(self):
+        targets = self.players[1:]
+
+        # Ask for candidates
+        candidates = self.broadcastChoice('是否竞选警长', '%s 竞选警长', targets = targets)
+
+        # Decide who can vote
+        can_vote_player = [player for player in targets \
+            if player not in candidates]
+
+        # Decide speech order
+        self.decideSpeechOrder(candidates)
+
+        # Ask candidates whether they want to quite
+        self.broadcast('正在等待候选人选择是否退水')
+        quited_player = self.broadcastChoice('是否退水', '%s 退水', targets = candidates)
+
+        for player in quited_player:
+            candidates.remove(player)
+
+        # Check for special situations
+        if not candidates:
+            self.broadcast('没有人竞选警长')
+            return
+
+        if len(candidates) == 1:
+            mayer = candidates[0]
+            self.broadcast('%s 成为唯一候选人' % mayer.num())
+
+        # Vote
+        else:
+            self.broadcast('等待玩家投票')
+            mayer = self.vote(candidates, '请输入你要选为警长的玩家编号', targets = can_vote_player)
+        
+        # Assign Mayer
+        mayer.is_mayer = True
+        self.broadcast('%s 当选警长' % mayer.num())
+
+    def voteForSuspect(self):
+        targets = self.survivedPlayers()
+
+        # Decide speech order
+        self.decideSpeechOrder(targets)
+
+        # Vote for suspect
+        try:
+            suspect = self.vote(targets, '请输入你要投出的玩家编号，狼人用0号表示爆炸', min_id = 0, targets = targets)
+        
+        # If a werewolf explods
+        except WerewolfExploded as e:
+            werewolf = e.player
+            werewolf.die()
+
+            self.broadcast('%s 爆炸' % werewolf.num())
+            werewolf.afterDying()
+            werewolf.afterExploded()
+        
+        # Vote out the suspect
+        else:
+            suspect.die()
+            suspect.afterDying()
+            self.isGameEnded()
+            self.broadcast('%s 被投出' % suspect.num())
+
+        # Give players some time to view the result
+        self.broadcast('查看结果后，回复任意内容以继续游戏', targets = targets)
+        for player in targets:
+            player.inputFrom('')
+
+    def decideSpeechOrder(self, candidates):
+        first_player = random.choice(candidates)
+        direction = random.choice(['顺时针', '逆时针'])
+        self.broadcast('从 %s %s发言' % (first_player.num(), direction))
+
+    def broadcastChoice(self, message, accept_message, targets = None):
+        # Broadcast message
+        self.broadcast(message + '(y/n)', targets = targets)
+
+        # Collect reply
+        accepted_players = []
+        for player in targets:
+            if player.selectFrom():
+                accepted_players.append(player)
+
+                self.broadcast(accept_message % player.num())
+                print(log(accept_message % player.num()))
+
+        return accepted_players
+
+    def vote(self, candidates, message, targets = None):
+        while True:
+            vote_result = self.getVoteResult(candidates, message, targets = targets)
+            self.showVoteResult(vote_result)
+            
+            # Check if two people get equal votes
+            if vote_result[0][2] == vote_result[1][2]:
+                self.broadcast('票数相同，重新投票')
+                continue
+            else:
+                break
+
+        return vote_result[0][0]
+
+    def getVoteResult(self, candidates, message, min_id = 1, targets = None):
+        self.broadcast(message, targets = targets)
+
+        voted_for = [list() for i in range(len(self.players) + 1)]
+        vote_count = [0.0]*(len(self.players) + 1)
+
+        # Ask for vote
+        for player in targets:
             while True:
-                if not agent.selectFrom('是否有狼人爆炸'):
-                    self.broadcast('操作员选择无人爆炸')
-                    break
-                explodedMan = agent.selectPlayer('输入该狼人的编号')
-                if not agent.selectFrom('是否确认对方的编号是 %d' % explodedMan):
-                    continue
-                explodedMan = self.players[explodedMan]
-                if explodedMan.died:
-                    agent.message('此玩家已经死亡，不能爆炸')
-                    continue
-                if not isinstance(explodedMan, Werewolf):
-                    self.broadcast('操作员选择的不是狼！')
-                    continue
-                else:
-                    self.broadcast('操作员选择%s爆炸' % explodedMan.num())
-                    print(log('%s爆炸' % explodedMan.description()))
-                    explodedMan.die()
-                    explodedMan.afterExploded()
-                    exploded = True
-                    break
-            
-            if exploded:
-                continue
-            
-            toKill = agent.selectPlayer('选择投死的玩家编号，0为平票', minNumber = 0)
-            if toKill == 0:
-                print(log('平票，没有人被处死'))
-                self.broadcast('操作员选择了平票')
-                continue
-            toKill = self.players[toKill]
-            self.broadcast('操作员选择投死%s' % toKill.num())
-            print(log('%s被处死' % toKill.description()))
-            toKill.die()
-            toKill.afterDying()
+                voted_id = player.selectPlayer(min_id = min_id, candidates = candidates)
+
+                # Vote for number 0 means explode
+                if voted_id == 0:
+                    if player.good:
+                        player.message('你不能爆炸')
+                        continue
+                    else:
+                        raise WerewolfExploded(player)
+                break
+
+            # Count votes
+            voted_for[voted_id].append(player)
+
+            if player.is_mayor:
+                vote_count[voted_id] += 1.5
+            else:
+                vote_count[voted_id] += 1
+
+        # Sort votes
+        vote_result = [(candidate, voted_for[candidate.player_id], vote_count[candidate.player_id]) \
+            for candidate in candidates]
+        vote_result.sort(key = lambda x: x[2])
+
+        return vote_result
+
+    def showVoteResult(self, vote_results, split = ', '):
+        for vote_result in vote_results:
+            # Unpack data
+            player = vote_result[0]
+            voted_by = vote_result[1]
+            vote_count = vote_result[2]
+
+            # Get string representation of voted_by
+            str_voted_by = ''
+            if vote_count == 0:
+                str_voted_by = '没有人'
+            else:
+                for (i, voted) in enumerate(voted_by):
+                    if i != 0:
+                        str_voted_by += split
+                    str_voted_by += voted.num()
+
+            # Broadcast the message
+            self.broadcast('%s 获得 %f 票（%s）' % (player.num(), vote_count, str_voted_by))
+
+    def survivedPlayers(self):
+        return [player for player in self.players[1:] if not player.died]
 
     # Check the end of game
     def isGameEnded(self):
+        # Count players
         villagerCount = 0
         godCount = 0
         werewolfCount = 0
@@ -173,6 +307,7 @@ class gameController:
                 else:
                     werewolfCount += 1
         
+        # Check if the game ends
         if villagerCount == 0:
             self.broadcast('刀民成功，狼人胜利！')
             playSound('刀民成功')
@@ -185,6 +320,7 @@ class gameController:
         else:
             return
 
+        # End of game
         print(log('游戏结束'))
         exit()
 
@@ -192,20 +328,27 @@ class gameController:
         if char == None:
             return
 
+        char.openEyes()
+
         if not char.died or char in self.lastKilled:
-            char.openEyes()
             char.move()
-            char.closeEyes()
         else:
-            time.sleep(random.random()*4+4) # Won't let the player close eyes immediately even if he/she died.
+            # Won't let the player close eyes immediately even if he/she died.
+            time.sleep(random.random()*4+4) 
 
-    def broadcast(self, string):
-        for player in self.players[1:]:
-            player.message(string)
+        char.closeEyes()
 
-    def broadcastToWolves(self, string):
-        for wolf in self.werewolves:
-            wolf.message('狼人：' + string)
+    def broadcast(self, message, targets = None):
+        # Default target
+        if targets == None:
+            targets = self.players[1:]
+
+        # Broadcast the message
+        for player in targets:
+            player.message(message)
+
+    def broadcastToWolves(self, message):
+        self.broadcast('狼人：' + message, targets = self.werewolves)
 
 controller = gameController()
 wechat.game_controller = controller

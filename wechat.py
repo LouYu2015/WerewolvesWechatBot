@@ -32,6 +32,9 @@ class WechatUser:
         '''
         Send message to user.
         '''
+        if not message:
+            message = '\n'*25 + '清屏'
+            
         itchat.send(message, toUserName = self.userName)
 
     def receiveMessage(self):
@@ -44,7 +47,8 @@ class WechatUser:
         '''
         Send message and get reply.
         '''
-        self.sendMessage(message)
+        if message:
+            self.sendMessage(message)
         return self.receiveMessage()
 
 # Accept a new message from players

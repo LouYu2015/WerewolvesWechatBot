@@ -1,8 +1,6 @@
 from audio import playSound
 from log import log
 
-CLR_STRING = '\n'*25 + '清屏' # A string to clear screen on Wechat
-
 def wait_for_random_time():
     time.sleep(random.random()*4+4)
 
@@ -12,10 +10,14 @@ class Character:
         controller: game controller
         '''
         self.player_id = None # ID of the player
-        self.died = False # Is player died
-        self.protected = False # Is player protected by Savior
         self.name = None # Player's name
         self.user = None # WechatUser object
+
+        self.died = False # Is player died
+        self.protected = False # Is player protected by Savior
+
+        self.is_mayer = False # Is the player elected as a mayer
+
         self.controller = controller # Game controller
     
     def welcome(self):
@@ -36,13 +38,14 @@ class Character:
         '''
         return self.user.getInput(message).strip()
     
-    def selectFrom(self, string):
+    def selectFrom(self, message = ''):
         '''
         Ask the player to select yes/no.
         '''
-        while True:
-            answer = self.inputFrom(string + '(y/n)：')
+        if message:
+            message += '(y/n)'
 
+        while True:
             if answer == 'Y' or answer == 'y':
                 return True
             elif answer == 'N' or answer == 'n':
@@ -50,13 +53,20 @@ class Character:
             else:
                 self.message('请输入Y/y(yes)或者N/n(no)')
     
-    def selectPlayer(self, string, min_id = 1):
+    def selectPlayer(self, message = '', min_id = 1, candidates = None):
         '''
         Let the player select a player.
         '''
+        # Default candidates
+        if candidates == None:
+            candidates = [player for player in self.controller.players[1:] \
+                if player in candidates or player in self.controller.lastKilled]
+
         while True:
             try:
-                answer = int(self.inputFrom(string + '：'))
+                answer = int(self.inputFrom(message))
+
+            # Special cases
             except ValueError:
                 self.message('这不是数字')
                 continue
@@ -65,19 +75,21 @@ class Character:
                 self.message('超出编号范围')
                 continue
 
+            if answer != 0 and self.controller.players[answer] not in candidates:
+                self.message('不是候选人')
+                continue
+
+            # Return the result
             return answer
     
     def kill(self):
         '''
-        Try to kill the player. Only werewolf should use this function.
+        Try to kill the player. Only werewolf should use this method.
         '''
-
         if not self.protected:
             self.die(True)
         else:
             self.controller.lastKilled.append(self)
-
-        return self.died
     
     def die(self, killed_by_wolf = False):
         '''
@@ -88,15 +100,28 @@ class Character:
         self.died = True
         self.controller.lastKilled.append(self)
 
-        if not killed_by_wolf:
-            # If killed by wolf, game won't end until Witch makes a choice.
+        if not killed_by_wolf: # If killed by wolf, game won't end until Witch makes a choice.
             self.controller.isGameEnded()
     
     def afterDying(self):
         '''
         Called at the start of daytime if the player died at night.
         '''
-        pass
+        if self.is_mayer:
+            # Resign
+            self.is_mayer = False
+
+            # Select next Mayer
+            self.controller.broadcast('等待移交警徽')
+            next_mayer_id = self.selectPlayer('输入你要移交警徽的玩家，撕警徽用 0 表示', min_id = 0)
+            
+            # Broadcast the result
+            if next_mayer_id == 0:
+                self.controller.broadcast('警长 %s 选择撕警徽' % self.num())
+            else:
+                next_mayer = self.controller.players[next_mayer]
+                next_mayer.is_mayer = True
+                self.controller.broadcast('警长 %s 选择把警徽交给 %s' % (self.num(), next_mayer.num()))
     
     def num(self):
         '''
@@ -121,7 +146,9 @@ class Character:
         Ask the player to close eyes.
         '''
         playSound('%s请闭眼' % self.__class__.identity)
-        self.message(CLR_STRING)
+
+        # Clear screen
+        self.message()
     
 class Witch(Character):
     identity = '女巫'
@@ -237,6 +264,8 @@ class Hunter(Character):
         self.can_use_gun = True
     
     def afterDying(self):
+        super().afterDying()
+
         # Can't use gun if killed by Witch
         if not self.can_use_gun:
             self.message('你是被女巫毒死的，不能放枪')
@@ -300,6 +329,8 @@ class WerewolfLeader(Werewolf):
     
     def closeEyes(self):
         playSound('狼人请闭眼')
+
+        self.message('')
         
 class Villager(Character):
     identity = '村民'
