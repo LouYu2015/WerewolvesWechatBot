@@ -21,7 +21,7 @@ class Character:
         '''
         Tell the player his/her identity.
         '''
-        self.message('你是%s' % self.description())
+        self.message('你是 %s' % self.description())
     
     def message(self, message):
         '''
@@ -57,7 +57,7 @@ class Character:
         # Default candidates
         if candidates == None:
             candidates = [player for player in self.controller.players[1:] \
-                if player in candidates or player in self.controller.lastKilled]
+                if not player.died or player in self.controller.lastKilled]
 
         while True:
             try:
@@ -294,17 +294,16 @@ class Hunter(Character):
             return
         
         # Choose target
-        target_id = self.selectPlayer('输入你要枪杀的玩家，0表示不放枪', min_id = 0)
+        target_id = self.selectPlayer('输入你要枪杀的玩家编号，0表示不放枪', min_id = 0)
+        target = self.controller.players[target_id]
         
         if target_id == 0:
             print(log('猎人没有放枪'))
             return
         
-        target = self.controller.players[target_id]
-        
-        # Send result
-        broadcast('%s枪杀了%s' % (self.description(), target.desc()))
-        print(log('%s枪杀了%s' % (self.description(), target.description())))
+        # Broadcast the result
+        broadcast('%s 枪杀了 %s' % (self.description(), target.desc()))
+        print(log('%s 枪杀了 %s' % (self.description(), target.description())))
         target.die()
 
 class Werewolf(Character):
@@ -312,23 +311,23 @@ class Werewolf(Character):
     good = False
     
     def move(self):
-        self.controller.broadcastToWolves('由%s代表狼人进行操作' % self.description())
+        self.controller.broadcastToWolves('由 %s 代表狼人进行操作' % self.description())
 
         # Choose target
         target_id = self.selectPlayer('输入你要杀的玩家，0表示空刀', min_id = 0)
+        target = self.controller.players[target_id]
 
         if target_id == 0:
             self.controller.broadcastToWolves('狼人选择空刀')
             print(log('狼人空刀'))
             return
-        target = self.controller.players[target_id]
 
         # Kill
         target.kill()
 
         # Send result
-        self.controller.broadcastToWolves('狼人选择刀%s' % target.desc())
-        print(log('狼人刀%s' % target.description()))
+        self.controller.broadcastToWolves('狼人选择刀 %s' % target.desc())
+        print(log('狼人刀 %s' % target.description()))
     
     def afterExploded(self):
         self.message('你不能带人')
@@ -343,15 +342,14 @@ class WerewolfLeader(Werewolf):
 
             target.die()
             
-            broadcast('%s带走了%s' % (self.description(), target.desc()))
-            print(log('%s带走了%s' % (self.description(), target.description())))
+            broadcast('%s 带走了 %s' % (self.description(), target.desc()))
+            print(log('%s 带走了 %s' % (self.description(), target.description())))
         
     def openEyes(self):
         playSound('狼人请睁眼')
     
     def closeEyes(self):
         playSound('狼人请闭眼')
-
         self.message('')
         
 class Villager(Character):
