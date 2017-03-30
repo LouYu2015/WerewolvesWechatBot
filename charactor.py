@@ -110,6 +110,7 @@ class Character:
         if self.is_mayer:
             # Resign
             self.is_mayer = False
+            self.controller.have_mayer = False
 
             # Select next Mayer
             self.controller.broadcast('等待移交警徽')
@@ -121,6 +122,8 @@ class Character:
             else:
                 next_mayer = self.controller.players[next_mayer]
                 next_mayer.is_mayer = True
+                self.controller.have_mayer = True
+                
                 self.controller.broadcast('警长 %s 选择把警徽交给 %s' % (self.desc(), next_mayer.desc()))
     
     def desc(self):

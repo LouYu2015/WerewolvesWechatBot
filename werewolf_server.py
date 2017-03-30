@@ -23,6 +23,9 @@ class WerewolfExploded(Exception):
         self.player = player
 
 class gameController:
+    def __init__(self):
+        self.have_mayer = False
+
     def startGame(self):
         # List of possible identities
         if test:
@@ -166,13 +169,17 @@ class gameController:
         
         # Assign Mayer
         mayer.is_mayer = True
+        self.have_mayer = True
         self.broadcast('%s 当选警长' % mayer.desc())
 
     def voteForSuspect(self):
         targets = self.survivedPlayers()
 
         # Decide speech order
-        self.decideSpeechOrder(targets)
+        if self.have_mayer:
+            self.broadcast('请警长选择发言顺序')
+        else:
+            self.decideSpeechOrder(candidates = targets)
 
         # Vote for suspect
         try:
