@@ -117,13 +117,13 @@ class Character:
             
             # Broadcast the result
             if next_mayer_id == 0:
-                self.controller.broadcast('警长 %s 选择撕警徽' % self.num())
+                self.controller.broadcast('警长 %s 选择撕警徽' % self.desc())
             else:
                 next_mayer = self.controller.players[next_mayer]
                 next_mayer.is_mayer = True
-                self.controller.broadcast('警长 %s 选择把警徽交给 %s' % (self.num(), next_mayer.num()))
+                self.controller.broadcast('警长 %s 选择把警徽交给 %s' % (self.desc(), next_mayer.desc()))
     
-    def num(self):
+    def desc(self):
         '''
         Short description of the player.
         '''
@@ -168,7 +168,7 @@ class Witch(Character):
             except IndexError:
                 self.message('刚才是空刀')
             else:
-                self.message('刚才%s被杀了' % diedMan.num())
+                self.message('刚才%s被杀了' % diedMan.desc())
 
                 if (nRound >= 2 and diedMan is self):
                     self.message('第二回合起你不能自救')
@@ -249,10 +249,10 @@ class Seer(Character):
 
         # Send the result
         if target.__class__.good:
-            self.message('%s是好人' % target.num())
+            self.message('%s是好人' % target.desc())
             print(log('%s发现%s是金水' % (self.description(), target.description())))
         else:
-            self.message('%s是坏人' % target.num())
+            self.message('%s是坏人' % target.desc())
             print(log('%s发现%s是查杀' % (self.description(), target.description())))
             
 class Hunter(Character):
@@ -281,7 +281,7 @@ class Hunter(Character):
         target = self.controller.players[target_id]
         
         # Send result
-        broadcast('%s枪杀了%s' % (self.description(), target.num()))
+        broadcast('%s枪杀了%s' % (self.description(), target.desc()))
         print(log('%s枪杀了%s' % (self.description(), target.description())))
         target.die()
 
@@ -305,7 +305,7 @@ class Werewolf(Character):
         target.kill()
 
         # Send result
-        self.controller.broadcastToWolves('狼人选择刀%s' % target.num())
+        self.controller.broadcastToWolves('狼人选择刀%s' % target.desc())
         print(log('狼人刀%s' % target.description()))
     
     def afterExploded(self):
@@ -321,7 +321,7 @@ class WerewolfLeader(Werewolf):
 
             target.die()
             
-            broadcast('%s带走了%s' % (self.description(), target.num()))
+            broadcast('%s带走了%s' % (self.description(), target.desc()))
             print(log('%s带走了%s' % (self.description(), target.description())))
         
     def openEyes(self):

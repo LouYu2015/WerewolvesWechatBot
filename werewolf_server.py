@@ -117,7 +117,7 @@ class gameController:
             random.shuffle(self.lastKilled)
             if self.lastKilled:
                 for player in self.lastKilled:
-                    self.broadcast('昨天晚上，%s死了' % player.num())
+                    self.broadcast('昨天晚上，%s死了' % player.desc())
             else:
                 self.broadcast('昨天晚上是平安夜～')
 
@@ -157,7 +157,7 @@ class gameController:
 
         if len(candidates) == 1:
             mayer = candidates[0]
-            self.broadcast('%s 成为唯一候选人' % mayer.num())
+            self.broadcast('%s 成为唯一候选人' % mayer.desc())
 
         # Vote
         else:
@@ -166,7 +166,7 @@ class gameController:
         
         # Assign Mayer
         mayer.is_mayer = True
-        self.broadcast('%s 当选警长' % mayer.num())
+        self.broadcast('%s 当选警长' % mayer.desc())
 
     def voteForSuspect(self):
         targets = self.survivedPlayers()
@@ -183,7 +183,7 @@ class gameController:
             werewolf = e.player
             werewolf.die()
 
-            self.broadcast('%s 爆炸' % werewolf.num())
+            self.broadcast('%s 爆炸' % werewolf.desc())
             werewolf.afterDying()
             werewolf.afterExploded()
         
@@ -192,7 +192,7 @@ class gameController:
             suspect.die()
             suspect.afterDying()
             self.isGameEnded()
-            self.broadcast('%s 被投出' % suspect.num())
+            self.broadcast('%s 被投出' % suspect.desc())
 
         # Give players some time to view the result
         self.broadcast('查看结果后，回复任意内容以继续游戏', targets = targets)
@@ -202,7 +202,7 @@ class gameController:
     def decideSpeechOrder(self, candidates):
         first_player = random.choice(candidates)
         direction = random.choice(['顺时针', '逆时针'])
-        self.broadcast('从 %s %s发言' % (first_player.num(), direction))
+        self.broadcast('从 %s %s发言' % (first_player.desc(), direction))
 
     def broadcastChoice(self, message, accept_message, targets = None):
         # Broadcast message
@@ -214,8 +214,8 @@ class gameController:
             if player.selectFrom():
                 accepted_players.append(player)
 
-                self.broadcast(accept_message % player.num())
-                print(log(accept_message % player.num()))
+                self.broadcast(accept_message % player.desc())
+                print(log(accept_message % player.desc()))
 
         return accepted_players
 
@@ -283,10 +283,10 @@ class gameController:
                 for (i, voted) in enumerate(voted_by):
                     if i != 0:
                         str_voted_by += split
-                    str_voted_by += voted.num()
+                    str_voted_by += voted.desc()
 
             # Broadcast the message
-            self.broadcast('%s 获得 %f 票（%s）' % (player.num(), vote_count, str_voted_by))
+            self.broadcast('%s 获得 %f 票（%s）' % (player.desc(), vote_count, str_voted_by))
 
     def survivedPlayers(self):
         return [player for player in self.players[1:] if not player.died]
