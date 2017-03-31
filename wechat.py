@@ -49,6 +49,23 @@ class WechatUser:
             self.send_message(message)
         return self.receive_message()
 
+    def get_int(self, message, min_value = -float('inf'), max_value = float('inf')):
+        '''
+        Get an intager in range(min_value, max_value)
+        '''
+        while True:
+            try:
+                result = int(user.get_input(message))
+            except ValueError:
+                user.send_message('这不是数字')
+                continue
+                
+            if not(min_value <= result < max_value):
+                user.send_message('超出范围')
+                continue
+
+            return result
+
 # Accept a new message from players
 @itchat.msg_register(itchat.content.TEXT)
 def listen_wechat_message(message):
@@ -85,15 +102,7 @@ def handle_request(user, remarkname):
 
     # Ask for the player's ID
     while True:
-        try:
-            player_id = int(user.get_input('请输入你的编号'))
-        except ValueError:
-            user.send_message('这不是数字')
-            continue
-            
-        if not(1 <= player_id < len(players)):
-            user.send_message('超出编号范围')
-            continue
+        player_id = user.get_int('请输入你的编号', 1, len(players))
 
         if players[player_id]:
             user.send_message('该编号已被占用')

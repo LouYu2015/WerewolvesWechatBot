@@ -61,17 +61,7 @@ class Character:
                 if not player.died or player in self.controller.killed_players]
 
         while True:
-            try:
-                answer = int(self.get_input(message))
-
-            # Special cases
-            except ValueError:
-                self.message('这不是数字')
-                continue
-                
-            if not(min_id <= answer < len(self.controller.players)):
-                self.message('超出编号范围')
-                continue
+            answer = self.user.get_int(message, min_id, len(self.controller.players))
 
             if answer != 0 and self.controller.players[answer] not in candidates:
                 self.message('不是候选人')
