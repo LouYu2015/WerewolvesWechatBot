@@ -7,8 +7,6 @@ class Config:
 		self.config = json.load(open(config_path))
 		self.prompts = json.load(open(prompts_path))
 
-		print(self.config)
-
 	def save(self):
 		json.dump(self.config, open(self.config_path, 'w'), indent = 4, sort_keys = True)
 
@@ -27,6 +25,7 @@ class Config:
 
 			for (i, (key, value)) in enumerate(sorted(menu.items())):
 				if isinstance(value, dict):
+					assert 'menu_title' in prompts[key].keys()
 					prompt = prompts[key]['menu_title']
 				else:
 					prompt = prompts[key]
@@ -75,5 +74,8 @@ class Config:
 		self.save()
 		user.send_message('已保存配置')
 
-config = Config('1.json', '2.json')
-config.edit(wechat.WechatUser(''))
+	def __call__(self, path):
+		cursor = self.config
+		for key in path.split('/'):
+			cursor = cursor[key]
+		return cursor
