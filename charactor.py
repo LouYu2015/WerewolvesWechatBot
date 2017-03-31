@@ -38,18 +38,7 @@ class Character:
         '''
         Ask the player to select yes/no.
         '''
-        if message:
-            message += '(y/n)'
-
-        answer = self.get_input(message)
-
-        while True:
-            if answer == 'Y' or answer == 'y':
-                return True
-            elif answer == 'N' or answer == 'n':
-                return False
-            else:
-                self.message('请输入Y/y(yes)或者N/n(no)')
+        return self.user.decide(message)
     
     def select_player(self, message = '', min_id = 1, candidates = None):
         '''

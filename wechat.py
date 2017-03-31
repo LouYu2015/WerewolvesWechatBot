@@ -55,16 +55,34 @@ class WechatUser:
         '''
         while True:
             try:
-                result = int(user.get_input(message))
+                result = int(self.get_input(message))
             except ValueError:
-                user.send_message('这不是数字')
+                self.send_message('这不是数字')
                 continue
                 
             if not(min_value <= result < max_value):
-                user.send_message('超出范围')
+                self.send_message('超出范围')
                 continue
 
             return result
+
+    def decide(self, message = ''):
+        '''
+        Ask the player to select yes/no.
+        '''
+        if message:
+            message += '(y/n)'
+
+        answer = self.get_input(message)
+
+        while True:
+            if answer == 'Y' or answer == 'y':
+                return True
+            elif answer == 'N' or answer == 'n':
+                return False
+            else:
+                self.message('请输入Y/y(yes)或者N/n(no)')
+
 
 # Accept a new message from players
 @itchat.msg_register(itchat.content.TEXT)
