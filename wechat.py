@@ -102,6 +102,17 @@ def listen_wechat_message(message):
         print('%s 作为 %s 进入了游戏' % (username, remarkname))
 
         threading.Thread(target = handle_request, args = (user,remarkname)).start()
+
+    # If a user wants to edit configuration file
+    elif '编辑配置' in text:
+        try:
+            user = username_to_user[username]
+        except KeyError:
+            return
+
+        print('%s 正在编辑配置' % remarkname)
+
+        threading.Thread(target = edit_config, args = (user,)).start()
     
     # If it's other message
     else:
@@ -140,3 +151,11 @@ def handle_request(user, remarkname):
     # Send message
     player.welcome()
     print('%s 已经上线' % player.desc())
+
+def edit_config(user):
+    if game_controller.game_started:
+        user.send_message('游戏过程中不能编辑配置')
+    else:
+        game_controller.config.edit(user)
+
+    print('配置编辑完成')

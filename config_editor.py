@@ -52,6 +52,7 @@ class Config:
 		def edit_menu(menu, prompts, user):
 			while True:
 				id_to_key = visualize_menu(menu, prompts, user)
+				
 				selection = user.get_int('', 0, len(menu.keys()) + 1)
 
 				if selection == 0:

@@ -144,7 +144,7 @@ class Witch(Character):
         
         self.controller.is_game_ended()
         
-        if used_medicine_this_round:
+        if used_medicine_this_round and not self.controller.config('rules/witch_two_posion_in_one_round'):
             self.message('不能双开')
         else:
             self.use_poison()
@@ -168,9 +168,13 @@ class Witch(Character):
         self.message('刚才 %s 被杀了' % died_player.desc())
 
         # Witch can't save himself/herself after fist round
-        if (self.controller.nRound >= 2 and died_player is self):
-            self.message('第二回合起你不能自救')
-            return False
+        if died_player is self:
+            if self.controller.nRound == 1 and not self.controller.config('rules/witch_witch_save_itself_at_first_night'):
+                self.message('第一晚不能自救')
+                return False
+            if self.controller.nRound >= 2 and not self.controller.config('rules/witch_witch_save_itself_after_first_night'):
+                self.message('第二回合起你不能自救')
+                return False
 
         # Ask whether the Witch want's to use medicine
         if not self.decide('是否使用解药'):
@@ -228,7 +232,8 @@ class Savior(Character):
             target_id = self.select_player('输入要守护的人,0表示空守', min_id = 0)
             target = self.controller.players[target_id]
             
-            if target.player_id != 0 and target is self.last_protected:
+            if target.player_id != 0 and target is self.last_protected \
+                and not self.controller.config('rules/savior_same_player_successivly'):
                 self.message('连续的回合里不能守护同一个人')
                 continue
             else:

@@ -1,0 +1,10 @@
+{
+    "rules": {
+        "have_mayor": false,
+        "savior_same_player_successivly": false,
+        "werewolf_can_explode": false,
+        "witch_save_itself_after_first_night": false,
+        "witch_save_itself_at_first_night": true,
+        "witch_two_posion_in_one_round": false
+    }
+}

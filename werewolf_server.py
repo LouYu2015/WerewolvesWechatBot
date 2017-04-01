@@ -12,8 +12,9 @@ import audio
 from audio import play_sound
 from charactor import *
 import wechat
+import config_editor
 
-audio.audioPath = '/home/louyu/program/werewolf/audio/'
+audio.audioPath = 'audio/'
 
 test = True
 
@@ -24,7 +25,10 @@ class WerewolfExploded(Exception):
 class GameController:
     def __init__(self):
         self.have_mayor = False
+
         self.history = []
+        self.game_started = False
+        self.config = config_editor.Config('config.json', 'config_prompts.json')
 
     def start_game(self):
         # List of possible identities
@@ -62,6 +66,7 @@ class GameController:
         self.mainLoop()
 
     def mainLoop(self):
+        self.game_started = True
         self.nRound = 0
         seer, savior, witch, self.werewolves = None, None, None, []
         
@@ -111,7 +116,7 @@ class GameController:
             play_sound('天亮了')
             
             # Vote for Mayor
-            if self.nRound == 1:
+            if self.nRound == 1 and self.config('rules/have_mayor'):
                 self.vote_for_mayor()
             
             # Show the result of last night
@@ -196,8 +201,8 @@ class GameController:
             werewolf.die()
             self.broadcast('%s 爆炸' % werewolf.desc())
             self.status('%s 爆炸' % werewolf.description())
-            werewolf.after_dying()
 
+            werewolf.after_dying()
             werewolf.after_exploded()
         
         # Vote out the suspect
@@ -262,7 +267,7 @@ class GameController:
 
                 # Vote for number 0 means explode
                 if voted_id == 0:
-                    if player.good:
+                    if player.good or not self.config('rules/werewolf_can_explode'):
                         player.message('你不能爆炸')
                         continue
                     else:
@@ -313,9 +318,6 @@ class GameController:
 
     # Check the end of game
     def is_game_ended(self):
-        if self.nRound == 1:
-            return
-
         # Count players
         villager_count = 0
         god_count = 0

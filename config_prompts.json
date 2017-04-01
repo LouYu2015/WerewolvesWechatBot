@@ -1,0 +1,12 @@
+{
+	"rules":
+	{
+		"menu_title":"规则设置",
+		"have_mayor": "是否进行警长竞选",
+		"witch_two_posion_in_one_round": "女巫是否可以双开",
+		"witch_save_itself_at_first_night": "女巫第一晚是否可以自救",
+		"witch_save_itself_after_first_night": "女巫第二晚起是否可以自救",
+		"savior_same_player_successivly": "守卫是否可以连续守人",
+		"werewolf_can_explode": "狼人是否可以爆炸"
+	}
+}
