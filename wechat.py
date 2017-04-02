@@ -21,6 +21,13 @@ class WechatUser:
         # Update the mapping
         username_to_user[username] = self
 
+    def clear_queue(self):
+        try:
+            while True:
+                self.msg_queue.get(block = False)
+        except queue.Empty:
+            return
+
     def got_message(self, message):
         '''
         Called when new message is reveived.
@@ -48,6 +55,9 @@ class WechatUser:
         '''
         if message:
             self.send_message(message)
+
+        self.clear_queue()
+
         return self.receive_message()
 
     def get_int(self, message, min_value = -float('inf'), max_value = float('inf')):
