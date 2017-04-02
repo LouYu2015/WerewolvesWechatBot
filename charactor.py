@@ -20,6 +20,7 @@ class Character:
         '''
         Tell the player his/her identity.
         '''
+        self.message(self.controller.str_identity_list())
         self.message('你是 %s' % self.description())
     
     def message(self, message = ''):

@@ -65,7 +65,7 @@ class Config:
 				if isinstance(value, bool):
 					menu[key] = not menu[key]
 				elif isinstance(value, int):
-					menu[key] = user.get_int('请输入%s' % prompt)
+					menu[key] = user.get_int('请输入%s' % prompt, 0)
 				elif isinstance(value, dict):
 					edit_menu(value, prompts[key], user)
 				else:

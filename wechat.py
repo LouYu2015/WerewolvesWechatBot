@@ -1,5 +1,6 @@
 import threading
 import queue
+import random
 
 import itchat
 
@@ -104,22 +105,22 @@ def listen_wechat_message(message):
         threading.Thread(target = handle_request, args = (user,remarkname)).start()
 
     # If a user wants to edit configuration file
-    elif '编辑配置' in text:
-        try:
-            user = username_to_user[username]
-        except KeyError:
-            return
-
-        print('%s 正在编辑配置' % remarkname)
-
-        threading.Thread(target = edit_config, args = (user,)).start()
-    
-    # If it's other message
     else:
         try:
-            username_to_user[username].got_message(text)
-        except KeyError:
+            user = username_to_user[username]
+        except KeyError: # User didn't join the game
             print('无效的消息:%s %s\n%s' % (remarkname, username, text))
+            return
+
+        if '编辑配置' in text:
+            print('%s 正在编辑配置' % remarkname)
+            threading.Thread(target = edit_config, args = (user,)).start()
+
+        elif '查看配置' in text:
+            user.message(game_controller.str_identity_list())
+    
+        else:
+            user.got_message(text)
 
 def handle_request(user, remarkname):
     players = game_controller.players
@@ -140,10 +141,12 @@ def handle_request(user, remarkname):
         break
     
     # Assign an identity
-    players[player_id] = game_controller.identity.pop()
-    
+    player = random.choice(game_controller.identity_pool)
+    game_controller.identity_pool.remove(player)
+
+    players[player_id] = player
+
     # Assign variables
-    player = players[player_id]
     player.player_id = player_id
     player.user = user
     player.name = remarkname
@@ -159,3 +162,4 @@ def edit_config(user):
         game_controller.config.edit(user)
 
     print('配置编辑完成')
+    game_controller.broadcast(game_controller.str_identity_list())

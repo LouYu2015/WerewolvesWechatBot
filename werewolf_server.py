@@ -3,6 +3,8 @@ Author: Yu Lou(louyu27@gmail.com)
 
 Server side program for the Werewolf game, running on Python 3.
 '''
+# TODO: Assign identity at the start of game instead of joining game
+
 import socket
 import time
 import random
@@ -30,20 +32,38 @@ class GameController:
         self.game_started = False
         self.config = config_editor.Config('config.json', 'config_prompts.json')
 
+        self.identity_list = []
+        self.initialize_identity_list()
+
+        self.identity_pool = self.identity_list.copy()
+
+    def initialize_identity_list(self):
+        path_to_class = [
+            ('gods/have_witch', Witch),
+            ('gods/have_seer', Seer),
+            ('gods/have_savior', Savior),
+            ('gods/have_hunter', Hunter),
+            ('n_villager', Villager),
+            ('werewolves/have_werewolf_leader', WerewolfLeader),
+            ('werewolves/n_werewolf', Werewolf)
+            ]
+
+        for (path, identity) in path_to_class:
+            value = self.config(path)
+
+            if isinstance(value, bool) and value == True:
+                self.identity_list.append(identity(controller = self))
+            else:
+                for i in range(value):
+                    self.identity_list.append(identity(controller = self))
+
+    def str_identity_list(self):
+        str_list = ','.join([player.identity for player in self.identity_list])
+        return '当前角色配置为%s' % str_list
+
     def start_game(self):
-        # List of possible identities
-        if test:
-            self.identity = [Werewolf(self)]#[Villager(), Witch(), Werewolf()]
-        else:
-            self.identity = [Villager(self), Villager(self), Villager(self),\
-                Witch(self), Seer(self), Savior(self),\
-                Werewolf(self), Werewolf(self), Werewolf(self)]
-
-        # Shuffle identities
-        random.shuffle(self.identity)
-
         # Initialize player list
-        self.players = [Villager(self)] + [None]*len(self.identity)
+        self.players = [Villager(self)] + [None]*len(self.identity_pool)
         self.players[0].died = True # Player 0 is just a placeholder
         self.players[0].player_id = 0
 
