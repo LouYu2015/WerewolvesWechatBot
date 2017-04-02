@@ -1,17 +1,11 @@
 {
-	"n_villager": 0,
-	"gods":
-	{
-		"have_witch": false,
-		"have_seer": false,
-		"have_savior": false,
-		"have_hunter": false
-	},
-	"werewolves":
-	{
-		"have_werewolf_leader": false,
-		"n_werewolf": 1
-	},
+    "gods": {
+        "have_hunter": false,
+        "have_savior": false,
+        "have_seer": false,
+        "have_witch": false
+    },
+    "n_villager": 0,
     "rules": {
         "have_mayor": false,
         "savior_same_player_successivly": false,
@@ -19,5 +13,9 @@
         "witch_save_itself_after_first_night": false,
         "witch_save_itself_at_first_night": true,
         "witch_two_posion_in_one_round": false
+    },
+    "werewolves": {
+        "have_werewolf_leader": true,
+        "n_werewolf": 0
     }
 }

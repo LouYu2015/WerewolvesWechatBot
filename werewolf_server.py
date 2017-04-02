@@ -3,7 +3,6 @@ Author: Yu Lou(louyu27@gmail.com)
 
 Server side program for the Werewolf game, running on Python 3.
 '''
-# TODO: Assign identity at the start of game instead of joining game
 
 import socket
 import time
@@ -33,11 +32,11 @@ class GameController:
         self.config = config_editor.Config('config.json', 'config_prompts.json')
 
         self.identity_list = []
-        self.initialize_identity_list()
+        self.initialize_identity_pool()
 
-        self.identity_pool = self.identity_list.copy()
 
-    def initialize_identity_list(self):
+    def initialize_identity_pool(self):
+        self.identity_list = []
         path_to_class = [
             ('gods/have_witch', Witch),
             ('gods/have_seer', Seer),
@@ -51,11 +50,38 @@ class GameController:
         for (path, identity) in path_to_class:
             value = self.config(path)
 
-            if isinstance(value, bool) and value == True:
-                self.identity_list.append(identity(controller = self))
+            if isinstance(value, bool):
+                if value == True:
+                    self.identity_list.append(identity(controller = self))
             else:
                 for i in range(value):
                     self.identity_list.append(identity(controller = self))
+
+        self.identity_pool = self.identity_list.copy()
+
+    def reassign_identities(self):
+        old_player_list = self.players
+        self.players = [Villager(self)] + [None]*len(self.identity_pool)
+
+        for (i, player) in enumerate(old_player_list):
+            if player and i != 0:
+                new_identity = self.pop_from_identity_pool()
+                new_identity.player_id = player.player_id
+                new_identity.user = player.user
+                new_identity.name = player.name
+
+                try:
+                    self.players[new_identity.player_id] = new_identity
+                except IndexError:
+                    new_identity.get_id()
+                    self.players[new_identity.player_id] = new_identity
+
+                new_identity.welcome()
+
+    def pop_from_identity_pool(self):
+        identity = random.choice(self.identity_pool)
+        self.identity_pool.remove(identity)
+        return identity
 
     def str_identity_list(self):
         str_list = ','.join([player.identity for player in self.identity_list])
@@ -395,7 +421,8 @@ class GameController:
 
         # Broadcast the message
         for player in targets:
-            player.message(message)
+            if player:
+                player.message(message)
 
     def broadcast_to_wolves(self, message):
         self.broadcast('狼人：' + message, targets = self.werewolves)

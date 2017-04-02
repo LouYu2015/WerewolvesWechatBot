@@ -129,27 +129,16 @@ def handle_request(user, remarkname):
     if not remarkname:
         remarkname = user.get_input('您没有备注名，请输入你的名字')
         print('%s 更名为 %s' % (user.username, remarkname))
-
-    # Ask for the player's ID
-    while True:
-        player_id = user.get_int('请输入你的编号', 1, len(players))
-
-        if players[player_id]:
-            user.send_message('该编号已被占用')
-            continue
-
-        break
     
     # Assign an identity
-    player = random.choice(game_controller.identity_pool)
-    game_controller.identity_pool.remove(player)
-
-    players[player_id] = player
+    player = game_controller.pop_from_identity_pool()
 
     # Assign variables
-    player.player_id = player_id
     player.user = user
     player.name = remarkname
+    player.get_id()
+
+    players[player.player_id] = player
 
     # Send message
     player.welcome()
@@ -162,4 +151,6 @@ def edit_config(user):
         game_controller.config.edit(user)
 
     print('配置编辑完成')
-    game_controller.broadcast(game_controller.str_identity_list())
+    game_controller.broadcast('配置已更新')
+    game_controller.initialize_identity_pool()
+    game_controller.reassign_identities()

@@ -1,4 +1,5 @@
 from audio import play_sound
+import threading
 
 class Character:
     def __init__(self, controller):
@@ -15,13 +16,30 @@ class Character:
         self.is_mayor = False # Is the player elected as a mayor
 
         self.controller = controller # Game controller
+
+    def get_id(self):
+        while True:
+            player_id = self.user.get_int('请输入你的编号', 1, len(self.controller.players))
+
+            if self.controller.players[player_id]:
+                self.user.send_message('该编号已被占用')
+                continue
+
+            break
+
+        self.player_id = player_id
     
     def welcome(self):
         '''
         Tell the player his/her identity.
         '''
-        self.message(self.controller.str_identity_list())
-        self.message('你是 %s' % self.description())
+        def welcome():
+            self.message(self.controller.str_identity_list())
+            self.message('你是 %s' % self.description())
+            self.get_input('记住身份后，请回复任意内容继续')
+            self.message('')
+
+        threading.Thread(target = welcome).start()
     
     def message(self, message = ''):
         '''
