@@ -244,9 +244,9 @@ class GameController:
         '''
         Show game result if game ends.
         '''
-        if self.nRound == 1:
-            return
-            
+        # if self.nRound == 1:
+        #     return
+
         # Count players
         villager_count = 0
         god_count = 0
