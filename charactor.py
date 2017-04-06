@@ -2,6 +2,8 @@ from audio import play_sound
 import threading
 
 class Character:
+    can_be_vote_out = True
+
     def __init__(self, controller):
         '''
         controller: game controller
@@ -311,6 +313,11 @@ class Hunter(Character):
         self.controller.broadcast('%s 枪杀了 %s' % (self.description(), target.desc()))
         self.controller.status('%s 枪杀了 %s' % (self.description(), target.description()))
         target.die()
+
+class Idiot(Character):
+    identity = '白痴'
+    good = True
+    can_be_vote_out = False
 
 class Werewolf(Character):
     identity = '狼人'

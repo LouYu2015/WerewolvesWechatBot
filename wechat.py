@@ -162,5 +162,4 @@ def edit_config(user):
 
     print('配置编辑完成')
     game_controller.broadcast('配置已更新')
-    game_controller.initialize_identity_pool()
     game_controller.reassign_identities()

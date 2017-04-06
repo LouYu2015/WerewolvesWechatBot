@@ -3,7 +3,8 @@
         "have_hunter": false,
         "have_savior": false,
         "have_seer": false,
-        "have_witch": false
+        "have_witch": false,
+        "have_idiot": false
     },
     "n_villager": 0,
     "rules": {

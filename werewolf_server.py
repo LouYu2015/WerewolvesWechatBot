@@ -20,36 +20,50 @@ audio.audioPath = 'audio/'
 test = True
 
 class WerewolfExploded(Exception):
+    '''
+    Raised when a werewolf explodes.
+    '''
     def __init__(self, player):
+        '''
+        player: the werewolf that explodes
+        '''
         self.player = player
 
 class GameController:
     def __init__(self):
-        self.have_mayor = False
+        # Game related variables
+        self.have_mayor = False # Does mayor currently exist
+        self.identity_list = [] # List of possible identities
 
-        self.history = []
-        self.game_started = False
-        self.config = config_editor.Config('config.json', 'config_prompts.json')
+        # Other variables
+        self.history = [] # History of status messages
+        self.game_started = False # Is game started?
+        self.config = config_editor.Config('config.json', 'config_prompts.json') # Configurations
 
-        self.identity_list = []
         self.initialize_identity_pool()
 
-
+    # Manage identities
     def initialize_identity_pool(self):
+        '''
+        Initialize 'identity_list' and 'identity_pool' from \
+        the configuration in 'self.config'.
+        '''
         self.identity_list = []
-        path_to_class = [
+        path_to_class = [ # Map configuration path to class name
             ('gods/have_witch', Witch),
             ('gods/have_seer', Seer),
             ('gods/have_savior', Savior),
             ('gods/have_hunter', Hunter),
+            ('gods/have_idiot', Idiot),
             ('n_villager', Villager),
             ('werewolves/have_werewolf_leader', WerewolfLeader),
             ('werewolves/n_werewolf', Werewolf)
             ]
 
         for (path, identity) in path_to_class:
-            value = self.config(path)
+            value = self.config(path) # Number of corresponding identity
 
+            # Add charactors
             if isinstance(value, bool):
                 if value == True:
                     self.identity_list.append(identity(controller = self))
@@ -60,34 +74,53 @@ class GameController:
         self.identity_pool = self.identity_list.copy()
 
     def reassign_identities(self):
+        '''
+        Reassign identities for players.
+        '''
+        self.initialize_identity_pool()
+
         old_player_list = self.players
         self.players = [Villager(self)] + [None]*len(self.identity_pool)
 
         for (i, player) in enumerate(old_player_list):
             if player and i != 0:
+                # Assign a new identity
                 new_identity = self.pop_from_identity_pool()
+
+                # Copy parameters
                 new_identity.player_id = player.player_id
                 new_identity.user = player.user
                 new_identity.name = player.name
 
+                # Add to player list
                 try:
                     self.players[new_identity.player_id] = new_identity
+
+                # If the ID is too large, ask for a new ID
                 except IndexError:
                     new_identity.get_id()
                     self.players[new_identity.player_id] = new_identity
 
+                # Inform the player
                 new_identity.welcome()
 
     def pop_from_identity_pool(self):
+        '''
+        Get an identity from identity pool.
+        '''
         identity = random.choice(self.identity_pool)
         self.identity_pool.remove(identity)
         return identity
 
     def str_identity_list(self):
+        '''
+        Get a string representation of identity list.
+        '''
         str_list = ','.join([player.identity for player in self.identity_list])
         return '当前角色配置为%s' % str_list
 
-    def start_game(self):
+    # Main program
+    def get_ready(self):
         # Initialize player list
         self.players = [Villager(self)] + [None]*len(self.identity_pool)
         self.players[0].died = True # Player 0 is just a placeholder
@@ -109,13 +142,17 @@ class GameController:
 
         # Start the game
         play_sound('游戏开始')
-        self.mainLoop()
+        self.main_loop()
 
-    def mainLoop(self):
+    def main_loop(self):
         self.game_started = True
-        self.nRound = 0
+
+        # Initialize variables
+        self.nRound = 0 # Number of days elapsed
         seer, savior, witch, self.werewolves = None, None, None, []
+        self.killed_players = [] # List of players who are killed last night
         
+        # Find players who have special identities
         for player in self.players[1:]:
             if isinstance(player, Seer):
                 seer = player
@@ -128,7 +165,6 @@ class GameController:
             elif isinstance(player, Werewolf):
                 self.werewolves.append(player)
         
-        self.killed_players = []
         # Main loop
         while True:
             self.nRound += 1
@@ -179,12 +215,85 @@ class GameController:
             for player in self.killed_players:
                 player.after_dying()
 
+            # Reset 'killed_players'
             killed_players = []
             
             # Vote for suspect
             self.vote_for_suspect()
 
+    def move_for(self, charactor):
+        '''
+        Called when a charactor needs to take a move.
+
+        charactor: the charactor that needs to take a move
+        '''
+        if charactor == None:
+            return
+
+        charactor.open_eyes()
+
+        if not charactor.died or charactor in self.killed_players:
+            charactor.move()
+        else:
+            # Won't let the player close eyes immediately even if he/she died.
+            time.sleep(random.random()*4+4) 
+
+        charactor.close_eyes()
+
+    def is_game_ended(self):
+        '''
+        Show game result if game ends.
+        '''
+        if self.nRound == 1:
+            return
+            
+        # Count players
+        villager_count = 0
+        god_count = 0
+        werewolf_count = 0
+
+        for player in self.players[1:]:
+            if not player.died:
+                if isinstance(player, Villager):
+                    villager_count += 1
+                elif player.__class__.good:
+                    god_count += 1
+                else:
+                    werewolf_count += 1
+        
+        # Check if the game ends
+        if villager_count == 0:
+            self.status('刀民成功，狼人胜利！', broadcast = True)
+            play_sound('刀民成功')
+        elif god_count == 0:
+            self.status('刀神成功，狼人胜利！', broadcast = True)
+            play_sound('刀神成功')
+        elif werewolf_count == 0:
+            self.status('逐狼成功，平民胜利！', broadcast = True)
+            play_sound('逐狼成功')
+        else:
+            return
+
+        # End of game
+        self.status('游戏结束', broadcast = True)
+        self.show_history()
+        exit()
+
+    def show_history(self):
+        '''
+        Show player identites status history.
+        '''
+        # Get desciptions of each player
+        identity_desc = [player.description() for player in self.players[1:]]
+
+        # Show player identites and status history
+        self.broadcast('\n'.join(identity_desc + self.history), targets = self.players[1:])
+
+    # Voting system
     def vote_for_mayor(self):
+        '''
+        Ask players to vote for a Mayor.
+        '''
         targets = self.players[1:]
 
         # Ask for candidates
@@ -206,13 +315,16 @@ class GameController:
         for player in quited_player:
             candidates.remove(player)
 
+        # Show remaining candidates
         self.broadcast('%s 退水' % self.player_list_to_str(quited_player))
         self.broadcast('%s 继续竞选警长' % self.player_list_to_str(candidates))
 
         # Check for special situations
+        # No candidate
         if not candidates:
             return
 
+        # Just one candidate
         if len(candidates) == 1:
             mayor = candidates[0]
 
@@ -253,10 +365,14 @@ class GameController:
         
         # Vote out the suspect
         else:
-            self.broadcast('%s 被投出' % suspect.desc())
-            self.status('%s 被投出' % suspect.description())
-            suspect.die()
-            suspect.after_dying()
+            if suspect.can_be_voted_out:
+                self.broadcast('%s 被投出' % suspect.desc())
+                self.status('%s 被投出' % suspect.description())
+                suspect.die()
+                suspect.after_dying()
+            else:
+                self.broadcast('%s 不能被投出' % suspect.desc())
+                self.status('%s 不能被投出' % suspect.description())
 
         self.is_game_ended()
 
@@ -266,12 +382,26 @@ class GameController:
             player.get_input('')
 
     def decide_speech_order(self, candidates):
+        '''
+        Randomly choose an order for players to give a speech.
+
+        candidate: list of players who can give a speech.
+        '''
         first_player = random.choice(candidates)
         direction = random.choice(['顺时针', '逆时针'])
         self.broadcast('从 %s %s发言' % (first_player.desc(), direction))
 
     def broadcast_choice(self, message, accept_message, targets = None):
-        # Broadcast message
+        '''
+        Ask several players to choose yes/no at the same time.
+
+        message: message that describes choices.
+        accept_message: status message for players who choose yes.
+        targets: list of players that needs to make the choice.
+
+        Return a list of players who choose yes.
+        '''
+        # Broadcast prompt
         self.broadcast(message + '(y/n)', targets = targets)
 
         # Collect reply
@@ -284,7 +414,18 @@ class GameController:
         return accepted_players
 
     def vote(self, candidates, message, min_id = 1, targets = None):
+        '''
+        Ask players to vote.
+
+        candidates: list of players who can be voted.
+        message: prompt message.
+        min_id: minimum player id that voters can choose.
+        targets: list of players who can vote.
+
+        Return the player who has the highest vote.
+        '''
         while True:
+            # Get and show result
             vote_result = self.get_vote_result(candidates, message, min_id, targets = targets)
             self.show_vote_result(vote_result)
             
@@ -301,6 +442,20 @@ class GameController:
         return vote_result[0][0]
 
     def get_vote_result(self, candidates, message, min_id = 1, targets = None):
+        '''
+        Ask players to vote.
+
+        candidates: list of players who can be voted.
+        message: prompt message.
+        min_id: minimum player id that voters can choose.
+        targets: list of players who can vote.
+
+        Return a list of tuple.
+        Elements in each tuple:
+            [0]:candidate
+            [1]:list of players who voted for this candidate
+            [2]:vote count for this candidate
+        '''
         self.broadcast(message, targets = targets)
 
         voted_for = [list() for i in range(len(self.players) + 1)]
@@ -335,7 +490,12 @@ class GameController:
 
         return vote_result
 
-    def show_vote_result(self, vote_results, split = ', '):
+    def show_vote_result(self, vote_results):
+        '''
+        Broadcast voting result.
+
+        vote_results: the list returned by 'get_vote_result'
+        '''
         for vote_result in vote_results:
             # Unpack data
             player = vote_result[0]
@@ -348,73 +508,14 @@ class GameController:
             # Broadcast the message
             self.broadcast('%s 获得 %.1f 票（%s）' % (player.desc(), vote_count, str_voted_by))
 
-    def survived_players(self):
-        return [player for player in self.players[1:] if not player.died]
-
-    def wait_random_time(self):
-        time.sleep(random.random()*4+4)
-
-    def player_list_to_str(self, players, split = ','):
-        if not players:
-            result = '没有人'
-        else:
-            result = split.join([player.desc() for player in players])
-
-        return result
-
-    # Check the end of game
-    def is_game_ended(self):
-        # Count players
-        villager_count = 0
-        god_count = 0
-        werewolf_count = 0
-
-        for player in self.players[1:]:
-            if not player.died:
-                if isinstance(player, Villager):
-                    villager_count += 1
-                elif player.__class__.good:
-                    god_count += 1
-                else:
-                    werewolf_count += 1
-        
-        # Check if the game ends
-        if villager_count == 0:
-            self.status('刀民成功，狼人胜利！', broadcast = True)
-            play_sound('刀民成功')
-        elif god_count == 0:
-            self.status('刀神成功，狼人胜利！', broadcast = True)
-            play_sound('刀神成功')
-        elif werewolf_count == 0:
-            self.status('逐狼成功，平民胜利！', broadcast = True)
-            play_sound('逐狼成功')
-        else:
-            return
-
-        # End of game
-        self.status('游戏结束', broadcast = True)
-        self.show_history()
-        exit()
-
-    def show_history(self):
-        str_identity = [player.description() for player in self.players[1:]]
-        self.broadcast('\n'.join(str_identity + self.history), targets = self.players[1:])
-
-    def move_for(self, charactor):
-        if charactor == None:
-            return
-
-        charactor.open_eyes()
-
-        if not charactor.died or charactor in self.killed_players:
-            charactor.move()
-        else:
-            # Won't let the player close eyes immediately even if he/she died.
-            time.sleep(random.random()*4+4) 
-
-        charactor.close_eyes()
-
+    # Message system
     def broadcast(self, message, targets = None):
+        '''
+        Broadcast a message. If 'targets' is 'None', broadcast to all players.
+
+        message: the message to be broadcasted
+        targets: list of players to receive this message
+        '''
         # Default target
         if targets == None:
             targets = self.players[1:]
@@ -425,9 +526,18 @@ class GameController:
                 player.message(message)
 
     def broadcast_to_wolves(self, message):
+        '''
+        Broadcast a message to werewolves.
+        '''
         self.broadcast('狼人：' + message, targets = self.werewolves)
 
     def status(self, message, broadcast = False):
+        '''
+        Store a status message.
+
+        message: the status message
+        broadcast: if 'True', the message will be broadcasted to players.
+        '''
         message_with_time = '[%s]%s' % (time.strftime('%H:%M:%S'), message)
         self.history.append(message_with_time)
         print(message_with_time)
@@ -435,7 +545,35 @@ class GameController:
         if broadcast:
             self.broadcast(message)
 
+    # Other methods
+    def survived_players(self):
+        '''
+        Get a list of survivied players
+        '''
+        return [player for player in self.players[1:] if not player.died]
+
+    def wait_random_time(self):
+        '''
+        Wait for a random amount of time.
+        '''
+        time.sleep(random.random()*4+4)
+
+    def player_list_to_str(self, players):
+        '''
+        Convert a list of player to a string representation of it.
+
+        players: list of players
+
+        Return the string.
+        '''
+        if not players:
+            result = '没有人'
+        else:
+            result = ','.join([player.desc() for player in players])
+
+        return result
+
 controller = GameController()
 wechat.game_controller = controller
 
-controller.start_game()
+controller.get_ready()
