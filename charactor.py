@@ -161,16 +161,16 @@ class Witch(Character):
         self.used_medicine = False
     
     def move(self):
-        used_medicine_this_round = self.use_medicine()
+        used_medicine_this_round = self.decide_use_medicine()
         
         self.controller.is_game_ended()
         
         if used_medicine_this_round and not self.controller.config('rules/witch_two_posion_in_one_round'):
             self.message('不能双开')
         else:
-            self.use_poison()
+            self.decide_use_poison()
 
-    def use_medicine(self):
+    def decide_use_medicine(self):
         # Check whether medicine is used
         if self.used_medicine:
             self.message('你用过解药了')
@@ -214,7 +214,7 @@ class Witch(Character):
             self.used_medicine = True
             return True
 
-    def use_poison(self):
+    def decide_use_poison(self):
         # Check whether poison is used
         if self.used_poison:
             self.message('你用过毒药了')
