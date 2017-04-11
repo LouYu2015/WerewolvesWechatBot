@@ -278,10 +278,10 @@ class GameController:
 
         # End of game
         self.status('游戏结束', broadcast = True)
-        self.show_history()
+        self.broadcast(self.get_history())
         exit()
 
-    def show_history(self):
+    def get_history(self):
         '''
         Show player identites status history.
         '''
@@ -289,7 +289,7 @@ class GameController:
         identity_desc = [player.description() for player in self.players[1:]]
 
         # Show player identites and status history
-        self.broadcast('\n'.join(identity_desc + self.history), targets = self.players[1:])
+        return '\n'.join(identity_desc + self.history)
 
     # Voting system
     def vote_for_mayor(self):

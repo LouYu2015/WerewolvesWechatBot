@@ -111,7 +111,7 @@ def listen_wechat_message(message):
     if '进入游戏' in text:
         if username in username_to_user.keys():
             return
-            
+
         user = WechatUser(username)
         print('%s 作为 %s 进入了游戏' % (username, remarkname))
 
@@ -130,10 +130,15 @@ def listen_wechat_message(message):
             threading.Thread(target = edit_config, args = (user,)).start()
 
         elif '查看配置' in text:
-            user.message(game_controller.str_identity_list())
+            user.send_message(game_controller.str_identity_list())
 
         elif '开始游戏' in text:
             game_controller.event_start_game.set()
+
+        elif '接管上帝' in text:
+            if game_controller.game_started:
+                user.send_message(game_controller.get_history())
+                game_controller.broadcast('%s 接管上帝' % remarkname)
     
         else:
             user.got_message(text)
