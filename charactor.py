@@ -18,6 +18,7 @@ class Character:
         self.is_mayor = False # Is the player elected as a mayor
 
         self.controller = controller # Game controller
+        self.ready = False # Is player ready to start game
 
     def get_id(self):
         while True:
@@ -40,6 +41,9 @@ class Character:
             self.message('你是 %s' % self.description())
             self.get_input('记住身份后，请回复任意内容继续')
             self.message('')
+
+            self.ready = True
+            self.controller.status('%s 已上线' % self.desc(), broadcast = True)
 
         threading.Thread(target = welcome).start()
     

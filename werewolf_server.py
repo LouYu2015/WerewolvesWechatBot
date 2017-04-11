@@ -8,6 +8,7 @@ import socket
 import time
 import random
 import struct
+import threading
 
 import audio
 from audio import play_sound
@@ -39,6 +40,7 @@ class GameController:
         self.history = [] # History of status messages
         self.game_started = False # Is game started?
         self.config = config_editor.Config('config.json', 'config_prompts.json') # Configurations
+        self.event_start_game = threading.Event()
 
         self.initialize_identity_pool()
 
@@ -128,13 +130,13 @@ class GameController:
 
         # Wait for players to join the game
         while True:
-            print('请按回车键开始游戏')
-            input()
+            self.event_start_game.clear()
+            self.event_start_game.wait()
 
             can_proceed = True
             for (i, player) in enumerate(self.players[1:]):
-                if player == None:
-                    print('缺少%d号玩家' % (i+1))
+                if player == None or not player.ready:
+                    self.broadcast('缺少 %d 号玩家' % (i+1))
                     can_proceed = False
 
             if can_proceed:

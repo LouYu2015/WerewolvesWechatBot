@@ -56,7 +56,7 @@ class WechatUser:
         if message:
             self.send_message(message)
 
-        # self.clear_queue()
+        self.clear_queue()
 
         return self.receive_message()
 
@@ -128,6 +128,9 @@ def listen_wechat_message(message):
 
         elif '查看配置' in text:
             user.message(game_controller.str_identity_list())
+
+        elif '开始游戏' in text:
+            game_controller.event_start_game.set()
     
         else:
             user.got_message(text)
@@ -152,7 +155,6 @@ def handle_request(user, remarkname):
 
     # Send message
     player.welcome()
-    print('%s 已经上线' % player.desc())
 
 def edit_config(user):
     if game_controller.game_started:
