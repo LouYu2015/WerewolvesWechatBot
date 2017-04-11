@@ -56,7 +56,7 @@ class WechatUser:
         if message:
             self.send_message(message)
 
-        self.clear_queue()
+        # self.clear_queue()
 
         return self.receive_message()
 
@@ -84,15 +84,15 @@ class WechatUser:
         if message:
             message += '(y/n)'
 
-        answer = self.get_input(message)
-
         while True:
+            answer = self.get_input(message)
+
             if answer == 'Y' or answer == 'y':
                 return True
             elif answer == 'N' or answer == 'n':
                 return False
             else:
-                self.message('请输入Y/y(yes)或者N/n(no)')
+                self.send_message('请输入Y/y(yes)或者N/n(no)')
 
 
 # Accept a new message from players

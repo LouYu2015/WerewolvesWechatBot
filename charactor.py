@@ -190,10 +190,10 @@ class Witch(Character):
 
         # Witch can't save himself/herself after fist round
         if died_player is self:
-            if self.controller.nRound == 1 and not self.controller.config('rules/witch_witch_save_itself_at_first_night'):
+            if self.controller.nRound == 1 and not self.controller.config('rules/witch_save_itself_at_first_night'):
                 self.message('第一晚不能自救')
                 return False
-            if self.controller.nRound >= 2 and not self.controller.config('rules/witch_witch_save_itself_after_first_night'):
+            if self.controller.nRound >= 2 and not self.controller.config('rules/witch_save_itself_after_first_night'):
                 self.message('第二回合起你不能自救')
                 return False
 
@@ -245,7 +245,7 @@ class Savior(Character):
     
     def __init__(self, controller):
         super().__init__(controller)
-        self.last_protected = self.controller.players[0] # The player that was protected on last round
+        self.last_protected = None # The player that was protected on last round
     
     def move(self):
         # Choose the target
@@ -261,7 +261,9 @@ class Savior(Character):
                 break
 
         # Protect the target
-        self.last_protected.protected = False
+        if self.last_protected:
+            self.last_protected.protected = False
+
         target.protected = True
         self.controller.status('%s 守护了 %s' % (self.description(), target.description()))
 
@@ -347,6 +349,7 @@ class Werewolf(Character):
 
 class WerewolfLeader(Werewolf):
     identity = '狼王'
+    good = False
     
     def after_exploded(self):
         if self.decide('是否要带人'):

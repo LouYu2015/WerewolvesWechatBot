@@ -486,7 +486,7 @@ class GameController:
         # Sort votes
         vote_result = [(candidate, voted_for[candidate.player_id], vote_count[candidate.player_id]) \
             for candidate in candidates]
-        vote_result.sort(key = lambda x: x[2])
+        vote_result.sort(key = lambda x: x[2], reverse = True)
 
         return vote_result
 
