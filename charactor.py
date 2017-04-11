@@ -347,6 +347,8 @@ class Werewolf(Character):
         # Send result
         self.controller.broadcast_to_wolves('狼人选择刀 %s' % target.desc())
         self.controller.status('狼人选择刀 %s' % target.description())
+        time.sleep(3)
+        self.controller.broadcast_to_wolves('')
     
     def after_exploded(self):
         self.message('你不能带人')

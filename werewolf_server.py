@@ -216,12 +216,12 @@ class GameController:
             # After dying
             for player in self.killed_players:
                 player.after_dying()
-
-            # Reset 'killed_players'
-            killed_players = []
             
             # Vote for suspect
             self.vote_for_suspect()
+
+            # Reset 'killed_players'
+            self.killed_players = []
 
     def move_for(self, charactor):
         '''
@@ -299,31 +299,36 @@ class GameController:
         targets = self.players[1:]
 
         # Ask for candidates
-        candidates = self.broadcast_choice('是否竞选警长', '%s 竞选警长', targets = targets)
+        candidates = self.broadcast_choice('是否竞选警长', '%s 完成了竞选选择', targets = targets)
 
-        self.broadcast('%s 竞选警长' % self.player_list_to_str(candidates))
+        self.status('%s 竞选警长' % self.player_list_to_str(candidates), broadcast = True)
 
         # Decide who can vote
         can_vote_players = [player for player in targets \
             if player not in candidates]
 
         # Decide speech order
-        self.decide_speech_order(candidates)
+        if candidates:
+            self.decide_speech_order(candidates)
 
         # Ask candidates whether they want to quite
         self.broadcast('正在等待候选人选择是否退水')
-        quited_player = self.broadcast_choice('是否退水', '%s 退水', targets = candidates)
+        quited_player = self.broadcast_choice('是否退水', '%s 完成了退水选择', targets = candidates)
 
         for player in quited_player:
             candidates.remove(player)
 
         # Show remaining candidates
-        self.broadcast('%s 退水' % self.player_list_to_str(quited_player))
-        self.broadcast('%s 继续竞选警长' % self.player_list_to_str(candidates))
+        self.status('%s 退水' % self.player_list_to_str(quited_player), broadcast = True)
+        self.status('%s 继续竞选警长' % self.player_list_to_str(candidates), broadcast = True)
 
         # Check for special situations
         # No candidate
         if not candidates:
+            return
+
+        if not can_vote_players:
+            self.status('没有人可以投票', broadcast = True)
             return
 
         # Just one candidate
@@ -379,9 +384,7 @@ class GameController:
         self.is_game_ended()
 
         # Give players some time to view the result
-        self.broadcast('查看结果后，回复任意内容以继续游戏', targets = targets)
-        for player in targets:
-            player.get_input('')
+        self.broadcast_choice('查看结果后，回复y以继续游戏', '%s 已确认今天的结果', targets = targets)
 
     def decide_speech_order(self, candidates):
         '''
@@ -393,25 +396,36 @@ class GameController:
         direction = random.choice(['顺时针', '逆时针'])
         self.broadcast('从 %s %s发言' % (first_player.desc(), direction))
 
-    def broadcast_choice(self, message, accept_message, targets = None):
+    def broadcast_choice(self, message, finish_message, targets = None):
         '''
         Ask several players to choose yes/no at the same time.
 
         message: message that describes choices.
-        accept_message: status message for players who choose yes.
+        finish_message: status message for players who finished choice
         targets: list of players that needs to make the choice.
 
         Return a list of players who choose yes.
         '''
-        # Broadcast prompt
-        self.broadcast(message + '(y/n)', targets = targets)
+        accepted_players = []
+        finish_events = []
+
+        def ask_for_choice(player, finish_event):
+            if player.decide(message):
+                accepted_players.append(player)
+            
+            self.status(finish_message % player.desc(), broadcast = True)
+            finish_event.set()
 
         # Collect reply
-        accepted_players = []
         for player in targets:
-            if player.decide():
-                accepted_players.append(player)
-                self.status(accept_message % player.desc())
+            finish_event = threading.Event()
+            finish_events.append(finish_event)
+
+            threading.Thread(target = ask_for_choice, args = (player,finish_event)).start()
+
+        # Wait for all players to finish
+        for event in finish_events:
+            event.wait()
 
         return accepted_players
 
@@ -428,12 +442,12 @@ class GameController:
         '''
         while True:
             # Get and show result
-            vote_result = self.get_vote_result(candidates, message, min_id, targets = targets)
-            self.show_vote_result(vote_result)
+            vote_statistic = self.get_vote_statistic(candidates, message, min_id, targets = targets)
+            self.show_vote_result(vote_statistic)
             
             # Check if two people get equal votes
             try:
-                if vote_result[0][2] == vote_result[1][2]:
+                if vote_statistic[0][2] == vote_statistic[1][2]:
                     self.broadcast('票数相同，重新投票')
                     continue
                 else:
@@ -441,9 +455,9 @@ class GameController:
             except IndexError:
                 break
 
-        return vote_result[0][0]
+        return vote_statistic[0][0]
 
-    def get_vote_result(self, candidates, message, min_id = 1, targets = None):
+    def get_vote_statistic(self, candidates, message, min_id = 1, targets = None):
         '''
         Ask players to vote.
 
@@ -458,37 +472,62 @@ class GameController:
             [1]:list of players who voted for this candidate
             [2]:vote count for this candidate
         '''
-        self.broadcast(message, targets = targets)
-
         voted_for = [list() for i in range(len(self.players) + 1)]
         vote_count = [0.0]*(len(self.players) + 1)
 
         # Ask for vote
-        for player in targets:
-            while True:
-                voted_id = player.select_player(min_id = min_id, candidates = candidates)
+        vote_result = self.get_vote_result(candidates, message, min_id, targets)
 
-                # Vote for number 0 means explode
-                if voted_id == 0:
-                    if player.good or not self.config('rules/werewolf_can_explode'):
-                        player.message('你不能爆炸')
-                        continue
-                    else:
-                        raise WerewolfExploded(player)
-                break
+        # Count votes
+        for (voter, elected_id) in vote_result:
+            if elected_id == 0:
+                raise WerewolfExploded(voter)
 
             # Count votes
-            voted_for[voted_id].append(player)
+            voted_for[elected_id].append(voter)
 
-            if player.is_mayor:
-                vote_count[voted_id] += 1.5
+            if voter.is_mayor:
+                vote_count[elected_id] += 1.5
             else:
-                vote_count[voted_id] += 1
+                vote_count[elected_id] += 1
 
         # Sort votes
-        vote_result = [(candidate, voted_for[candidate.player_id], vote_count[candidate.player_id]) \
+        vote_statistic = [(candidate, voted_for[candidate.player_id], vote_count[candidate.player_id]) \
             for candidate in candidates]
-        vote_result.sort(key = lambda x: x[2], reverse = True)
+        vote_statistic.sort(key = lambda x: x[2], reverse = True)
+
+        return vote_statistic
+
+    def get_vote_result(self, candidates, message, min_id, targets):
+        vote_result = []
+        finish_events = []
+
+        def ask_for_vote(player, finish_event):
+            if not player.decide('是否弃票'):
+                while True:
+                    voted_id = player.select_player(message, min_id = min_id, candidates = candidates)
+
+                    # Vote for number 0 means explode
+                    if voted_id == 0:
+                        if player.good or not self.config('rules/werewolf_can_explode'):
+                            player.message('你不能爆炸')
+                            continue
+                    
+                    vote_result.append((player, voted_id))
+                    break
+
+            self.status('%s 已投票' % player.desc(), broadcast = True)
+
+            finish_event.set()
+
+        for player in targets:
+            finish_event = threading.Event()
+            finish_events.append(finish_event)
+
+            threading.Thread(target = ask_for_vote, args = (player, finish_event)).start()
+
+        for event in finish_events:
+            event.wait()
 
         return vote_result
 
@@ -496,13 +535,13 @@ class GameController:
         '''
         Broadcast voting result.
 
-        vote_results: the list returned by 'get_vote_result'
+        vote_results: the list returned by 'get_vote_statistic'
         '''
-        for vote_result in vote_results:
+        for vote_statistic in vote_results:
             # Unpack data
-            player = vote_result[0]
-            voted_by = vote_result[1]
-            vote_count = vote_result[2]
+            player = vote_statistic[0]
+            voted_by = vote_statistic[1]
+            vote_count = vote_statistic[2]
 
             # Get string representation of voted_by
             str_voted_by = self.player_list_to_str(voted_by)

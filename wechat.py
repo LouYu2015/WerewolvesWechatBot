@@ -109,6 +109,9 @@ def listen_wechat_message(message):
 
     # If a user wants to enter the game
     if '进入游戏' in text:
+        if username in username_to_user.keys():
+            return
+            
         user = WechatUser(username)
         print('%s 作为 %s 进入了游戏' % (username, remarkname))
 
