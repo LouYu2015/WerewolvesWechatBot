@@ -10,6 +10,7 @@
     "rules": {
         "have_mayor": true,
         "savior_same_player_successivly": false,
+        "vote_waiting_time": 8,
         "werewolf_can_explode": true,
         "witch_save_itself_after_first_night": false,
         "witch_save_itself_at_first_night": true,

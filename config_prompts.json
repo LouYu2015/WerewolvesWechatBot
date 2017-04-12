@@ -23,6 +23,7 @@
 		"witch_save_itself_at_first_night": 	"女巫第一晚可以自救",
 		"witch_save_itself_after_first_night": 	"女巫第二晚起可以自救",
 		"savior_same_player_successivly": 		"守卫可以连续守人",
-		"werewolf_can_explode": 				"狼人可以爆炸"
+		"werewolf_can_explode": 				"狼人可以爆炸",
+		"vote_waiting_time":					"投票等待时间"
 	}
 }

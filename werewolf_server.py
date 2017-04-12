@@ -408,12 +408,15 @@ class GameController:
         '''
         accepted_players = []
         finish_events = []
+        broadcast_event = threading.Event()
 
         def ask_for_choice(player, finish_event):
             if player.decide(message):
                 accepted_players.append(player)
             
+            broadcast_event.wait()
             self.status(finish_message % player.desc(), broadcast = True)
+
             finish_event.set()
 
         # Collect reply
@@ -422,6 +425,10 @@ class GameController:
             finish_events.append(finish_event)
 
             threading.Thread(target = ask_for_choice, args = (player,finish_event)).start()
+
+        # Broadcast status after some time
+        time.sleep(self.config['rules/vote_waiting_time'])
+        broadcast_event.set()
 
         # Wait for all players to finish
         for event in finish_events:
@@ -500,7 +507,8 @@ class GameController:
 
     def get_vote_result(self, candidates, message, min_id, targets):
         vote_result = []
-        finish_events = []
+        finish_events = [] # Set when the player finishes voting
+        broadcast_event = threading.event() # Set when it's time to reveal the result
 
         def ask_for_vote(player, finish_event):
             if not player.decide('是否弃票'):
@@ -516,16 +524,23 @@ class GameController:
                     vote_result.append((player, voted_id))
                     break
 
+            broadcast_event.wait()
             self.status('%s 已投票' % player.desc(), broadcast = True)
 
             finish_event.set()
 
+        # Ask for vote
         for player in targets:
             finish_event = threading.Event()
             finish_events.append(finish_event)
 
             threading.Thread(target = ask_for_vote, args = (player, finish_event)).start()
 
+        # Boradcast status after some time
+        time.sleep(self.config['rules/vote_waiting_time'])
+        broadcast_event.set()
+
+        # Wait for vote
         for event in finish_events:
             event.wait()
 
