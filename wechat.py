@@ -163,9 +163,9 @@ def listen_wechat_message(message):
 def handle_request(user, remarkname):
     players = game_controller.players
 
-    # Ask for remarkname if it's empty
-    if not remarkname:
-        remarkname = user.get_input('您没有备注名，请输入你的名字')
+    # Ask for remarkname
+    if not remarkname or not game_controller.config('system/use_remark_name_from_wechat'):
+        remarkname = user.get_input('请输入你想使用的备注名')
         print('%s 更名为 %s' % (user.username, remarkname))
     
     # Assign an identity

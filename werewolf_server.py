@@ -426,7 +426,7 @@ class GameController:
             threading.Thread(target = ask_for_choice, args = (player,finish_event)).start()
 
         # Broadcast status after some time
-        time.sleep(self.config('rules/vote_waiting_time'))
+        time.sleep(self.config('system/vote_waiting_time'))
         broadcast_event.set()
 
         # Wait for all players to finish
@@ -542,7 +542,7 @@ class GameController:
             threading.Thread(target = ask_for_vote, args = (player, finish_event)).start()
 
         # Boradcast status after some time
-        time.sleep(self.config('rules/vote_waiting_time'))
+        time.sleep(self.config('system/vote_waiting_time'))
         broadcast_event.set()
 
         # Wait for vote
