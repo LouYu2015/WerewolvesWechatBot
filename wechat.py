@@ -4,7 +4,7 @@ import random
 
 import itchat
 
-# Start listening
+# Start listening Wechat messages
 itchat.auto_login()
 threading.Thread(target = itchat.run).start()
 
@@ -22,6 +22,9 @@ class WechatUser:
         username_to_user[username] = self
 
     def clear_queue(self):
+        '''
+        clear message queue.
+        '''
         try:
             while True:
                 self.msg_queue.get(block = False)
@@ -30,7 +33,7 @@ class WechatUser:
 
     def got_message(self, message):
         '''
-        Called when new message is reveived.
+        Put message into message queue.
         '''
         self.msg_queue.put(message)
 
@@ -107,11 +110,13 @@ def listen_wechat_message(message):
     except KeyError:
         remarkname = None
 
-    # If a user wants to enter the game
+    # If a user wants to register in the game
     if '进入游戏' in text:
+        # Registered user can't register the game twice
         if username in username_to_user.keys():
             return
 
+        # Handle the request in a new thread
         user = WechatUser(username)
         print('%s 作为 %s 进入了游戏' % (username, remarkname))
 
@@ -119,27 +124,39 @@ def listen_wechat_message(message):
 
     # If a user wants to edit configuration file
     else:
+        # Get WechatUser object
         try:
             user = username_to_user[username]
-        except KeyError: # User didn't join the game
-            print('无效的消息:%s %s\n%s' % (remarkname, username, text))
+
+        # If this user haven't register
+        except KeyError:
+            print('忽略消息(%s,%s):\n%s' % (remarkname, username, text))
             return
 
+        # Edit configuration
         if '编辑配置' in text:
+            # Start a new thread to handle this
             print('%s 正在编辑配置' % remarkname)
+
+            user.ready = False
             threading.Thread(target = edit_config, args = (user,)).start()
+            user.ready = True
 
+        # See identities
         elif '查看配置' in text:
-            user.send_message(game_controller.str_identity_list())
+            user.welcome()
 
+        # Start game
         elif '开始游戏' in text:
             game_controller.event_start_game.set()
 
+        # Get game history
         elif '接管上帝' in text:
             if game_controller.game_started:
                 user.send_message(game_controller.get_history())
                 game_controller.broadcast('%s 接管上帝' % remarkname)
-    
+        
+        # Put into message queue
         else:
             user.got_message(text)
 
@@ -170,6 +187,5 @@ def edit_config(user):
     else:
         game_controller.config.edit(user)
 
-    print('配置编辑完成')
-    game_controller.broadcast('配置已更新')
+    game_controller.status('配置已更新', broadcast = True)
     game_controller.reassign_identities()

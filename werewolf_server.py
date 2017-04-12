@@ -1,7 +1,7 @@
 '''
 Author: Yu Lou(louyu27@gmail.com)
 
-Server side program for the Werewolf game, running on Python 3.
+A Wechat bot for the Werewolf game, running with Python 3.
 '''
 
 import socket
@@ -203,24 +203,24 @@ class GameController:
             if self.nRound == 1 and self.config('rules/have_mayor'):
                 self.vote_for_mayor()
             
-            # Show the result of last night
+            # Remove players who resurrect
             self.killed_players = [player for player in self.killed_players if player.died]
             random.shuffle(self.killed_players)
 
+            # Show the result of last night
             if self.killed_players:
-                for player in self.killed_players:
-                    self.broadcast('昨天晚上，%s 死了' % player.desc())
+                self.broadcast('昨天晚上，%s 死了' % self.player_list_to_str(self.killed_players))
             else:
                 self.broadcast('昨天晚上是平安夜～')
 
-            # After dying
+            # Trigger after-dying action
             for player in self.killed_players:
                 player.after_dying()
             
             # Vote for suspect
             self.vote_for_suspect()
 
-            # Reset 'killed_players'
+            # Reset killed_players
             self.killed_players = []
 
     def move_for(self, charactor):
