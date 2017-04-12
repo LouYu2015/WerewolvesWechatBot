@@ -5,6 +5,7 @@ Play a wave sound file.
 '''
 import pyaudio  
 import wave
+import os
 
 audioPath = None # Path to audio files
 
@@ -13,7 +14,7 @@ def play_sound(name):
     chunk = 1024  
 
     #open a wav format music  
-    f = wave.open('%s%s.wav' % (audioPath, name),"rb")
+    f = wave.open(os.path.join(audioPath, name + '.wav'),"rb")
     #instantiate PyAudio  
     p = pyaudio.PyAudio()  
     #open stream  

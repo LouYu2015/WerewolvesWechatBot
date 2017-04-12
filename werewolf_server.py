@@ -16,7 +16,7 @@ from charactor import *
 import wechat
 import config_editor
 
-audio.audioPath = 'audio/'
+audio.audioPath = 'audio'
 
 test = True
 
