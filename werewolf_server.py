@@ -414,7 +414,7 @@ class GameController:
                 accepted_players.append(player)
             
             broadcast_event.wait()
-            self.status(finish_message % player.desc(), broadcast = True)
+            self.broadcast(finish_message % player.desc())
 
             finish_event.set()
 
@@ -426,7 +426,7 @@ class GameController:
             threading.Thread(target = ask_for_choice, args = (player,finish_event)).start()
 
         # Broadcast status after some time
-        time.sleep(self.config['rules/vote_waiting_time'])
+        time.sleep(self.config('rules/vote_waiting_time'))
         broadcast_event.set()
 
         # Wait for all players to finish
@@ -490,7 +490,7 @@ class GameController:
             if elected_id == 0:
                 raise WerewolfExploded(voter)
             elif elected_id == -1:
-                give_up.append(player)
+                give_up.append(voter)
                 continue
 
             # Count votes
@@ -511,7 +511,7 @@ class GameController:
     def get_vote_result(self, candidates, message, min_id, targets):
         vote_result = []
         finish_events = [] # Set when the player finishes voting
-        broadcast_event = threading.event() # Set when it's time to reveal the result
+        broadcast_event = threading.Event() # Set when it's time to reveal the result
 
         def ask_for_vote(player, finish_event):
             if player.decide('是否投票'):
@@ -530,7 +530,7 @@ class GameController:
                 vote_result.append((player, -1))
 
             broadcast_event.wait()
-            self.status('%s 已投票' % player.desc(), broadcast = True)
+            self.broadcast('%s 已投票' % player.desc())
 
             finish_event.set()
 
@@ -542,7 +542,7 @@ class GameController:
             threading.Thread(target = ask_for_vote, args = (player, finish_event)).start()
 
         # Boradcast status after some time
-        time.sleep(self.config['rules/vote_waiting_time'])
+        time.sleep(self.config('rules/vote_waiting_time'))
         broadcast_event.set()
 
         # Wait for vote
