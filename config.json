@@ -18,7 +18,7 @@
     "system":
     {
         "use_remark_name_from_wechat": true,
-        "vote_waiting_time": 8
+        "vote_waiting_time": 4
     },
     "werewolves": {
         "have_werewolf_leader": true,

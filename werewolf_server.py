@@ -406,12 +406,16 @@ class GameController:
         Return a list of players who choose yes.
         '''
         accepted_players = []
-        finish_events = []
-        broadcast_event = threading.Event()
+        first_respond_event = threading.Event() # Set when first respond is received
+        broadcast_event = threading.Event() # Set when it's time to reveal the result
+        finish_events = [] # Set when the player finishes voting
 
         def ask_for_choice(player, finish_event):
             if player.decide(message):
                 accepted_players.append(player)
+            
+            player.message('收到')
+            first_respond_event.set()
             
             broadcast_event.wait()
             self.broadcast(finish_message % player.desc())
@@ -426,6 +430,7 @@ class GameController:
             threading.Thread(target = ask_for_choice, args = (player,finish_event)).start()
 
         # Broadcast status after some time
+        first_respond_event.wait()
         time.sleep(self.config('system/vote_waiting_time'))
         broadcast_event.set()
 
@@ -510,8 +515,9 @@ class GameController:
 
     def get_vote_result(self, candidates, message, min_id, targets):
         vote_result = []
-        finish_events = [] # Set when the player finishes voting
+        first_respond_event = threading.Event() # Set when first respond is received
         broadcast_event = threading.Event() # Set when it's time to reveal the result
+        finish_events = [] # Set when the player finishes voting
 
         def ask_for_vote(player, finish_event):
             if player.decide('是否投票'):
@@ -529,6 +535,9 @@ class GameController:
             else:
                 vote_result.append((player, -1))
 
+            player.message('收到')
+            first_respond_event.set()
+
             broadcast_event.wait()
             self.broadcast('%s 已投票' % player.desc())
 
@@ -542,6 +551,7 @@ class GameController:
             threading.Thread(target = ask_for_vote, args = (player, finish_event)).start()
 
         # Boradcast status after some time
+        first_respond_event.wait()
         time.sleep(self.config('system/vote_waiting_time'))
         broadcast_event.set()
 
