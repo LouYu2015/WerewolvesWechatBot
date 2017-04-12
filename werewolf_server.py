@@ -1,7 +1,7 @@
 '''
-Author: Yu Lou(louyu27@gmail.com)
+A Wechat bot for the Werewolf game, running on Python 3.
 
-A Wechat bot for the Werewolf game, running with Python 3.
+Contributor(s): Yu Lou(louyu27@gmail.com)
 '''
 
 import socket
