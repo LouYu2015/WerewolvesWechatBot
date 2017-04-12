@@ -449,8 +449,8 @@ class GameController:
         '''
         while True:
             # Get and show result
-            vote_statistic = self.get_vote_statistic(candidates, message, min_id, targets = targets)
-            self.show_vote_result(vote_statistic)
+            (vote_statistic, give_up) = self.get_vote_statistic(candidates, message, min_id, targets = targets)
+            self.show_vote_result(vote_statistic, give_up)
             
             # Check if two people get equal votes
             try:
@@ -473,14 +473,15 @@ class GameController:
         min_id: minimum player id that voters can choose.
         targets: list of players who can vote.
 
-        Return a list of tuple.
+        Return a list of tuple and a list of players who give up.
         Elements in each tuple:
             [0]:candidate
             [1]:list of players who voted for this candidate
             [2]:vote count for this candidate
         '''
         voted_for = [list() for i in range(len(self.players) + 1)]
-        vote_count = [0.0]*(len(self.players) + 1)
+        vote_count = [0]*(len(self.players) + 1)
+        give_up = []
 
         # Ask for vote
         vote_result = self.get_vote_result(candidates, message, min_id, targets)
@@ -489,6 +490,9 @@ class GameController:
         for (voter, elected_id) in vote_result:
             if elected_id == 0:
                 raise WerewolfExploded(voter)
+            elif elected_id == -1:
+                give_up.append(player)
+                continue
 
             # Count votes
             voted_for[elected_id].append(voter)
@@ -503,7 +507,7 @@ class GameController:
             for candidate in candidates]
         vote_statistic.sort(key = lambda x: x[2], reverse = True)
 
-        return vote_statistic
+        return (vote_statistic, give_up)
 
     def get_vote_result(self, candidates, message, min_id, targets):
         vote_result = []
@@ -511,7 +515,7 @@ class GameController:
         broadcast_event = threading.event() # Set when it's time to reveal the result
 
         def ask_for_vote(player, finish_event):
-            if not player.decide('是否弃票'):
+            if player.decide('是否投票'):
                 while True:
                     voted_id = player.select_player(message, min_id = min_id, candidates = candidates)
 
@@ -523,6 +527,8 @@ class GameController:
                     
                     vote_result.append((player, voted_id))
                     break
+            else:
+                vote_result.append((player, -1))
 
             broadcast_event.wait()
             self.status('%s 已投票' % player.desc(), broadcast = True)
@@ -546,12 +552,18 @@ class GameController:
 
         return vote_result
 
-    def show_vote_result(self, vote_results):
+    def show_vote_result(self, vote_results, give_up):
         '''
         Broadcast voting result.
 
         vote_results: the list returned by 'get_vote_statistic'
+        give_up: list of players who give up voting
         '''
+        messages = []
+
+        for player in give_up:
+            messages.append('%s 弃票' % player.desc())
+
         for vote_statistic in vote_results:
             # Unpack data
             player = vote_statistic[0]
@@ -562,7 +574,9 @@ class GameController:
             str_voted_by = self.player_list_to_str(voted_by)
 
             # Broadcast the message
-            self.broadcast('%s 获得 %.1f 票（%s）' % (player.desc(), vote_count, str_voted_by))
+            messages.append('%s 获得 %.1f 票（%s）' % (player.desc(), float(vote_count), str_voted_by))
+
+        self.broadcast('\n'.join(messages))
 
     # Message system
     def broadcast(self, message, targets = None):
