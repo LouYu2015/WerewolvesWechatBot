@@ -299,24 +299,23 @@ class GameController:
         targets = self.players[1:]
 
         # Ask for candidates
-        candidates = self.broadcast_choice('是否竞选警长', '%s 完成了竞选选择', targets = targets)
+        initial_candidates = self.broadcast_choice('是否竞选警长', '%s 完成了是否竞选的选择', targets = targets)
 
-        self.status('%s 竞选警长' % self.player_list_to_str(candidates), broadcast = True)
+        self.status('%s 竞选警长' % self.player_list_to_str(initial_candidates), broadcast = True)
 
         # Decide who can vote
         can_vote_players = [player for player in targets \
-            if player not in candidates]
+            if player not in initial_candidates]
 
         # Decide speech order
-        if candidates:
-            self.decide_speech_order(candidates)
+        if initial_candidates:
+            self.decide_speech_order(initial_candidates)
 
         # Ask candidates whether they want to quite
-        self.broadcast('正在等待候选人选择是否退水')
-        quited_player = self.broadcast_choice('是否退水', '%s 完成了退水选择', targets = candidates)
-
-        for player in quited_player:
-            candidates.remove(player)
+        self.broadcast('正在等待候选人选择是否继续竞选')
+        candidates = self.broadcast_choice('是否继续竞选', '%s 完成了是否继续竞选的选择', targets = initial_candidates)
+        
+        quited_player = [player for player in initial_candidates if player not in candidates]
 
         # Show remaining candidates
         self.status('%s 退水' % self.player_list_to_str(quited_player), broadcast = True)
