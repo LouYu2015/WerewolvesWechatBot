@@ -18,7 +18,13 @@ import config_editor
 
 audio.audioPath = 'audio'
 
-test = True
+def main():
+    controller = GameController()
+    wechat.game_controller = controller
+
+    controller.get_ready()
+    play_sound('游戏开始')
+    controller.main_loop()
 
 class WerewolfExploded(Exception):
     '''
@@ -141,10 +147,6 @@ class GameController:
 
             if can_proceed:
                 break
-
-        # Start the game
-        play_sound('游戏开始')
-        self.main_loop()
 
     def main_loop(self):
         self.game_started = True
@@ -652,7 +654,4 @@ class GameController:
 
         return result
 
-controller = GameController()
-wechat.game_controller = controller
-
-controller.get_ready()
+main()
