@@ -105,6 +105,12 @@ class Character:
 
         if not killed_by_wolf: # If killed by wolf, game won't end until Witch makes a choice.
             self.controller.is_game_ended()
+
+    def wake_up(self):
+        '''
+        Called at the start of each day.
+        '''
+        pass
     
     def after_dying(self):
         '''
@@ -325,6 +331,37 @@ class Idiot(Character):
     identity = '白痴'
     good = True
     can_be_voted_out = False
+
+class Silencer(Character):
+    identity = '禁言长老'
+    good = True
+
+    def __init__(self, controller):
+        super().__init__(controller)
+        self.silenced = None
+
+    def move(self):
+        while True:
+            target_id = self.select_player('选择你要禁言的人', min_id = 0)
+
+            if target_id == 0:
+                self.silenced = None
+                self.controller.status('禁言长老选择不禁言')
+                return
+
+            if self.silenced and target_id == self.silenced.player_id:
+                self.message('你不能连续禁言同一个人')
+                continue
+            else:
+                break
+
+        self.silenced = self.controller.players[target_id]
+
+        self.controller.status('%s 被禁言' % self.silenced.description())
+
+    def wake_up(self):
+        if self.silenced:
+            self.controller.broadcast('%s 被禁言' % self.silenced.desc())
 
 class Werewolf(Character):
     identity = '狼人'

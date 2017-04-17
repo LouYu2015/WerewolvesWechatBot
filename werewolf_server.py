@@ -63,6 +63,7 @@ class GameController:
             ('gods/have_savior', Savior),
             ('gods/have_hunter', Hunter),
             ('gods/have_idiot', Idiot),
+            ('gods/have_silencer', Silencer),
             ('n_villager', Villager),
             ('werewolves/have_werewolf_leader', WerewolfLeader),
             ('werewolves/n_werewolf', Werewolf)
@@ -164,6 +165,8 @@ class GameController:
                 witch = player
             elif isinstance(player, Savior):
                 savior = player
+            elif isinstance(player, Silencer):
+                silencer = player
             elif isinstance(player, WerewolfLeader):
                 self.werewolves.insert(0, player) # Insert the leader to the front
             elif isinstance(player, Werewolf):
@@ -194,6 +197,8 @@ class GameController:
                 self.is_game_ended()
             
             self.move_for(seer)
+
+            self.move_for(silencer)
             
             # Day
             self.status('-----第%d天-----' % self.nRound, broadcast = True)
@@ -218,6 +223,13 @@ class GameController:
             # Trigger after-dying action
             for player in self.killed_players:
                 player.after_dying()
+
+            # Trigger wake-up action
+            player_list = self.survived_players()
+            random.shuffle(player_list)
+
+            for player in player_list:
+                player.wake_up()
             
             # Vote for suspect
             self.vote_for_suspect()
@@ -312,6 +324,10 @@ class GameController:
         # Decide speech order
         if initial_candidates:
             self.decide_speech_order(initial_candidates)
+
+        # Special case: no candidate
+        if not initial_candidates:
+            return
 
         # Ask candidates whether they want to quite
         self.broadcast('正在等待候选人选择是否继续竞选')

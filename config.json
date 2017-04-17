@@ -5,6 +5,7 @@
         "have_savior": true,
         "have_seer": true,
         "have_witch": true
+        "have_silencer": true,
     },
     "n_villager": 3,
     "rules": {
