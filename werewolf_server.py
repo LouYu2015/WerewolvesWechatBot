@@ -420,7 +420,7 @@ class GameController:
             first_respond_event.set()
             
             broadcast_event.wait()
-            self.broadcast(finish_message % player.desc())
+            self.players[1].message(finish_message % player.desc())
 
             finish_event.set()
 
@@ -541,7 +541,7 @@ class GameController:
             first_respond_event.set()
 
             broadcast_event.wait()
-            self.broadcast('%s 已投票' % player.desc())
+            self.players[1].message('%s 已投票' % player.desc())
 
             finish_event.set()
 
