@@ -1,5 +1,6 @@
 from audio import play_sound
 import threading
+import time
 
 class Character:
     can_be_voted_out = True
