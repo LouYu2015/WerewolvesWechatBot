@@ -626,7 +626,10 @@ class GameController:
         '''
         Broadcast a message to werewolves.
         '''
-        self.broadcast('狼人：' + message, targets = self.werewolves)
+        if message:
+            message = '狼人：' + message
+
+        self.broadcast(message, targets = self.werewolves)
 
     def status(self, message, broadcast = False):
         '''
