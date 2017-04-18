@@ -30,6 +30,7 @@ class WechatUser:
         '''
         self.msg_queue = queue.Queue() # Queue for messages
         self.username = username # Wechat username
+        self.identity = None
 
         # Update the mapping
         username_to_user[username] = self
@@ -157,7 +158,7 @@ def listen_wechat_message(message):
 
         # See identities
         elif '查看配置' in text:
-            user.welcome()
+            user.identity.welcome()
 
         # Start game
         elif '开始游戏' in text:
@@ -183,6 +184,7 @@ def handle_request(user, remarkname):
     
     # Assign an identity
     player = game_controller.pop_from_identity_pool()
+    user.identity = player
 
     # Assign variables
     player.user = user
