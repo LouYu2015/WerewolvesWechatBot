@@ -154,7 +154,7 @@ class GameController:
 
         # Initialize variables
         self.nRound = 0 # Number of days elapsed
-        seer, savior, witch, self.werewolves = None, None, None, []
+        seer, savior, witch, silencer, self.werewolves = None, None, None, None, []
         self.killed_players = [] # List of players who are killed last night
         
         # Find players who have special identities
