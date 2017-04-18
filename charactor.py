@@ -44,7 +44,7 @@ class Character:
             self.message('')
 
             self.ready = True
-            self.controller.status('%s 已上线' % self.desc(), broadcast = True)
+            self.message('%s 已上线' % self.desc())
 
         threading.Thread(target = welcome).start()
     
