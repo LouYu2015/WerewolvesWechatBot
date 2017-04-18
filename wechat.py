@@ -1,14 +1,27 @@
 import threading
 import queue
 import random
+import time
 
 import itchat
+
+
+username_to_user = {} # Map Wechat user name to WechatUser object
+send_msg_queue = queue.Queue() # Avoid sending messages too fast by buffering
 
 # Start listening Wechat messages
 itchat.auto_login()
 threading.Thread(target = itchat.run).start()
 
-username_to_user = {} # Map Wechat user name to WechatUser object
+# Send messages in another thread
+def send_messages_in_queue():
+    while(True):
+        (username, message) = send_msg_queue.get()
+        itchat.send(message, toUserName = username)
+
+        time.sleep(0.5)
+        
+threading.Thread(target = send_messages_in_queue).start()
 
 class WechatUser:
     def __init__(self, username):
@@ -43,8 +56,8 @@ class WechatUser:
         '''
         if not message:
             message = '\n'*25 + '清屏'
-            
-        itchat.send(message, toUserName = self.username)
+
+        send_msg_queue.put((self.username, message))
 
     def receive_message(self):
         '''
