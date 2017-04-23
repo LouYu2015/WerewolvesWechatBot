@@ -10,8 +10,8 @@ class Config:
 		self.config_path = config_path
 
 		# Load files
-		self.config = json.load(open(config_path))
-		self.prompts = json.load(open(prompts_path))
+		self.config = json.load(open(config_path, encoding = 'utf-8'))
+		self.prompts = json.load(open(prompts_path, encoding = 'utf-8'))
 
 	def save(self):
 		'''
