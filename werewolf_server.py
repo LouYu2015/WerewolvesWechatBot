@@ -9,6 +9,8 @@ import time
 import random
 import struct
 import threading
+import os
+import sys
 
 import audio
 from audio import play_sound
@@ -16,7 +18,18 @@ from charactor import *
 import wechat
 import config_editor
 
-audio.audioPath = 'audio'
+def get_path(path):
+    """
+    Get absolute path from relative path.
+    """
+    try:
+        base_path = sys._MEIPASS # If packed by PyInstaller
+    except AttributeError:
+        base_path = os.path.abspath(".") # If executed directly
+
+    return os.path.join(base_path, path)
+
+audio.audioPath = get_path('audio')
 
 def main():
     controller = GameController()
@@ -45,8 +58,12 @@ class GameController:
         # Other variables
         self.history = [] # History of status messages
         self.game_started = False # Is game started?
-        self.config = config_editor.Config('config.json', 'config_prompts.json') # Configurations
         self.event_start_game = threading.Event()
+
+        # Load configuration file
+        config_path = get_path('config.json')
+        prompt_path = get_path('config_prompts.json')
+        self.config = config_editor.Config(config_path, prompt_path) # Configurations
 
         self.initialize_identity_pool()
 
@@ -673,4 +690,5 @@ class GameController:
 
         return result
 
-main()
+if __name__ == '__main__':
+    main()
