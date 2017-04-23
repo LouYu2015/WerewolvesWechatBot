@@ -6,27 +6,58 @@
 
 ## 系统要求
 
-理论上只要成功安装 pyaudio 和 itchat 即可运行，而这两个依赖项均同时支持 Linux, Mac 和 Windows。不过，我只在 Linux 上测试了程序。
+理论上只要成功安装 pyaudio 和 itchat 即可运行，而这两个依赖项均同时支持 Linux, Mac 和 Windows。不过，我只在 Linux 和 Windows 上测试了程序。
 
-## 安装方法
+## 免安装运行
+
+我在 Windows 7 和 Ubuntu 16.10 上用 PyInstaller 打包了程序，所以目前 64 位的 Windows 和 Linux 系统可以免安装运行啦。只需在 Release 界面下载对应的压缩包，然后运行 `werewolf_server.exe`（Windows）或者  `werewolf_server`（Linux）即可。
+
+有时 PyInstaller 在打包时会漏掉一些依赖项，如果在免安装运行的时候，程序刚启动就出现错误，则很可能是打包的问题，可以尝试直接运行源代码；如果程序在运行过程中才崩溃，则很可能是代码本身的 BUG。
+
+对于没有完成打包的系统（比如 32 位系统或者 Mac），也可以通过直接运行源代码的方式执行程序。
+
+## 直接运行源代码
+
+若要直接运行源代码，请先安装 Python3.5。可以参考[这篇文章](http://www.liaoxuefeng.com/wiki/0014316089557264a6b348958f449949df42a6d3a2e542c000/0014316090478912dab2a3a9e8f4ed49d28854b292f85bb000) 。
+
+程序的源代码可以在 Release 界面的 Source Code 链接或者 Clone or Download 的 Download ZIP 链接下载。
 
 程序需要以下依赖项:
 
 * pyaudio
 * itchat
 
-可以使用 pip 安装：
+可以使用 pip 安装依赖项。
 
-	pip3 install pyaudio
-	pip3 install itchat
+### Mac/Linux 用户
 
+打开“终端”应用，执行以下命令：
+
+	sudo pip3 install pyaudio
+	sudo pip3 install itchat
+	
+（这些指令需要用系统的登录密码来授权）
+
+之后就可以用 python3 运行程序了：
+	
+	cd <储存代码的文件夹路径>
+	python3 werewolf_sever.py
+
+### Windows 用户
+
+打开命令行（按 `Win + R`，输入 `cmd` 然后确定），执行以下命令：
+
+	py -3 -m pip install pyaudio
+	py -3 -m pip install itchat
+
+之后就可以用 python 运行程序了：
+
+	cd <储存代码的文件夹路径>
+	py -3 werewolf_server.py
+	
 ## 使用方法
 
-安装完成后，使用 python3 运行主程序：
-
-	python3 werewolf_server.py
-
-运行后，itchat 会弹出微信登录二维码，用微信扫描后确认登录即可成为法官。
+运行程序后，itchat 会弹出微信登录二维码，用微信扫描后在手机上确认登录即可成为法官。
 	
 **提示：**
 
@@ -70,7 +101,7 @@
 
 **注意：**目前游戏是刀边规则，暂未添加屠城规则。
 
-## 文件结构
+## 源代码结构
 
 * audio（文件夹）：包含语音提示的声音文件
 * werewolf_server.py：主程序，包含游戏控制器的代码
@@ -80,10 +111,11 @@
 * config_editor.py：包含控制配置文件的代码
 * config.json：游戏的配置文件
 * config_prompts.json：储存配置文件中每个值对应的菜单提示
+* werewolf_server.spec：PyInstaller 的打包配置文件
 
 ## 技术问题笔记
 
 此处用于记录开发过程中遇到过的问题：
 
 1. 目前 audio.py 只能读取 signed 16-bit PCM 格式的 WAV 文件，读取 32-bit float PCM 格式的 WAV 会崩溃。
-2. 如果程序发送消息的频率过快，则微信帐号会被屏蔽一段时间。之前出现了单人测试没有问题但是多人测试的时候微信号被屏蔽的情况，所以减少了群发消息的使用。
+2. 如果程序发送消息的频率过快，则微信帐号会被屏蔽一段时间。之前出现了单人测试没有问题但是多人测试的时候微信帐号被屏蔽的情况，所以我主动限制了发送消息的间隔。
