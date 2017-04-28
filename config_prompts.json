@@ -29,7 +29,6 @@
 	"system":
 	{
 		"menu_title":							"系统设置",
-		"vote_waiting_time":					"投票等待时间",
-		"use_remark_name_from_wechat":			"微信备注名作为游戏昵称"
+		"vote_waiting_time":					"投票等待时间(秒)"
 	}
 }

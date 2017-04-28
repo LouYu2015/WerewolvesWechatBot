@@ -67,6 +67,9 @@ class GameController:
 
         self.initialize_identity_pool()
 
+        # Start wechat controller
+        wechat.WechatController(game_controller = self)
+
     # Manage identities
     def initialize_identity_pool(self):
         '''

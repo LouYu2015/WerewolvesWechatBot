@@ -16,9 +16,7 @@
         "witch_save_itself_at_first_night": true,
         "witch_two_posion_in_one_round": false
     },
-    "system":
-    {
-        "use_remark_name_from_wechat": true,
+    "system": {
         "vote_waiting_time": 4
     },
     "werewolves": {
