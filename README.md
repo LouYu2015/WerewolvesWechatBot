@@ -104,11 +104,12 @@
 ## 源代码结构
 
 * audio（文件夹）：包含语音提示的声音文件
-* werewolf_server.py：主程序，包含游戏控制器的代码
-* charactor.py：包含所有游戏角色的代码
-* wechat.py：包含发送、接受微信消息，响应命令的代码
+* werewolf_server.py：主程序，包含游戏控制器的代码，控制游戏的流程
+* charactor.py：包含所有游戏角色的代码，控制角色之间的逻辑
+* wechat.py：实现 `ClientController` 与 itchat 的通信
+* client_controller.py：包含所有客户端的通用代码，实现处理输入和命令的基本工具
 * audio.py：包含播放声音的代码
-* config_editor.py：包含控制配置文件的代码
+* config_editor.py：包含处理配置文件的代码，实现配置文件的读取、交互式编辑和保存
 * config.json：游戏的配置文件
 * config_prompts.json：储存配置文件中每个值对应的菜单提示
 * werewolf_server.spec：PyInstaller 的打包配置文件
