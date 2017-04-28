@@ -2,6 +2,9 @@ import queue
 import threading
 
 class UserNotRegistered(Exception):
+    """
+    Raised when the Client object of an unregistered user is requested.
+    """
     pass
 
 class Client:
@@ -14,9 +17,9 @@ class Client:
         self.username = username
         self.remarkname = None
 
-        self.identity = None # Link to the game charactor
-        self.msg_queue = queue.Queue() # Queue for received 
-        self.ready = False # Is player ready to begin the game
+        self.identity = None # Link to the Charactor object of the user
+        self.msg_queue = queue.Queue() # Queue for received messages from user
+        self.ready = False # Is user ready to begin the game
 
     def clear_queue(self):
         '''
@@ -31,6 +34,7 @@ class Client:
     def got_message(self, message):
         '''
         Put message into message queue.
+        Will be called by controller when a new message arrives.
         '''
         self.msg_queue.put(message)
 
@@ -45,28 +49,29 @@ class Client:
 
     def receive_message(self):
         '''
-        Get message from user.
+        Return the next message from user.
         '''
         return self.msg_queue.get() # Will block when there's no new message
 
-    def get_input(self, message):
+    def get_input(self, prompt):
         '''
-        Send message and get reply.
+        Send prompt and return the reply.
         '''
-        if message:
-            self.send_message(message)
+        if prompt:
+            self.send_message(prompt)
 
         self.clear_queue()
 
         return self.receive_message()
 
-    def get_int(self, message, min_value = -float('inf'), max_value = float('inf')):
+    def get_int(self, prompt, min_value = -float('inf'), max_value = float('inf')):
         '''
-        Get an intager in range(min_value, max_value)
+        Ask the user to enter an integer in range(min_value, max_value).
+        Return the integer.
         '''
         while True:
             try:
-                result = int(self.get_input(message))
+                result = int(self.get_input(prompt))
             except ValueError:
                 self.send_message('这不是数字')
                 continue
@@ -80,6 +85,7 @@ class Client:
     def decide(self, message = ''):
         '''
         Ask the player to select yes/no.
+        Return a boolean.
         '''
         if message:
             message += '(y/n)'
@@ -96,24 +102,48 @@ class Client:
 
 class ClientController:
     def __init__(self, game_controller):
+        """
+        game_controller: link to the game controller.
+        """
         self.game_controller = game_controller
 
     def new_user(self, username):
+        """
+        Initiate a new user.
+
+        username: username of the user
+        """
         return Client(self, username)
 
     def register_user(self, username, user):
+        """
+        Link the user object to the username.
+        """
         pass
 
     def user_from_username(self, username):
-        pass
+        """
+        Return the user object that has the username.
+        """
+        return None
 
     def clear_screen(self, username):
+        """
+        Clear the screen of the user.
+        """
         pass
 
     def send_message(self, username, message):
+        """
+        Send a message to the user.
+        """
         pass
 
     def got_message(self, username, message):
+        """
+        Process the message from user.
+        Will be called by message listener upon message arrival.
+        """
         if '进入游戏' in message:
             threading.Thread(target = self.enter_game, args = (username,)).start()
             return
@@ -130,6 +160,11 @@ class ClientController:
             user.got_message(message)
 
     def process_command(self, user, message):
+        """
+        If the message is a command, execute the command.
+
+        Return whether the message is a command.
+        """
         # Edit configuration
         if '编辑配置' in message:
             command = self.edit_config
